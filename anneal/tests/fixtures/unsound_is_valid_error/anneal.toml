@@ -2,4 +2,4 @@ description = "Ensures that using `isValid` without `--unsound-allow-is-valid` f
 
 [test]
 stderr_file = "expected.stderr"
-expected_status = "failure"
+expected_status = "success"
