@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777401767401,
+  "lastUpdate": 1777402120598,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -5087,6 +5087,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 474,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f896a6890a1e6feb01d3c26364bf674f0573321e",
+          "message": "[anneal][README] Document TCB shrinking (#3326)\n\ngherrit-pr-id: Gy4y7cstkui5s6c7jletzjbu37xtjglxm",
+          "timestamp": "2026-04-28T18:10:09Z",
+          "tree_id": "04fd33df84b5b512246673abd226b3bf491693a7",
+          "url": "https://github.com/google/zerocopy/commit/f896a6890a1e6feb01d3c26364bf674f0573321e"
+        },
+        "date": 1777402117876,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 168,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 329,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 532,
             "unit": "seconds"
           }
         ]
