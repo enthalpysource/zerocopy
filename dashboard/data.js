@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777401476832,
+  "lastUpdate": 1777401767401,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -632,6 +632,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/commit/a51752bdff4d521681a8c2d5d97396015114d6d8"
         },
         "date": 1776858647728,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Image Size",
+            "value": 16277,
+            "unit": "Megabytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f896a6890a1e6feb01d3c26364bf674f0573321e",
+          "message": "[anneal][README] Document TCB shrinking (#3326)\n\ngherrit-pr-id: Gy4y7cstkui5s6c7jletzjbu37xtjglxm",
+          "timestamp": "2026-04-28T18:10:09Z",
+          "tree_id": "04fd33df84b5b512246673abd226b3bf491693a7",
+          "url": "https://github.com/google/zerocopy/commit/f896a6890a1e6feb01d3c26364bf674f0573321e"
+        },
+        "date": 1777401765380,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
