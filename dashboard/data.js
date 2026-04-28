@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777386893395,
+  "lastUpdate": 1777399861925,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3091,6 +3091,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 31,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "f896a6890a1e6feb01d3c26364bf674f0573321e",
+          "message": "[anneal][README] Document TCB shrinking (#3326)\n\ngherrit-pr-id: Gy4y7cstkui5s6c7jletzjbu37xtjglxm",
+          "timestamp": "2026-04-28T18:10:09Z",
+          "url": "https://github.com/google/zerocopy/commit/f896a6890a1e6feb01d3c26364bf674f0573321e"
+        },
+        "date": 1777399859380,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 7,
             "unit": "seconds"
           }
         ]
