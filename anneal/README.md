@@ -109,7 +109,7 @@ impl std::ops::Div<PositiveUsize> for usize {
 Install Anneal and its required toolchains (Charon and Aeneas):
 
 ```bash
-cargo install cargo-anneal@0.1.0-alpha.20
+cargo install cargo-anneal@0.1.0-alpha.21
 cargo anneal setup
 ```
 
@@ -136,8 +136,6 @@ cargo anneal verify
 ```
 
 ## Usage & Commands
-
-Anneal wraps the underlying tools to provide a seamless experience:
 
 - **`cargo anneal verify`**: Verifies the target crate.
 - **`cargo anneal expand`**: Outputs the generated Lean code without running full verification (useful for debugging).
