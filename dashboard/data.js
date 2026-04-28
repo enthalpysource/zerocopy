@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777289080017,
+  "lastUpdate": 1777386094661,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3036,6 +3036,31 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3301/commits/060fa19351a96e39a97ab4c17d017855834d3a98"
         },
         "date": 1777288488802,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "f55a6dde7143cf5519c1e0ea628d358222364cf3",
+          "message": "[anneal][README] Document TCB shrinking",
+          "timestamp": "2026-04-27T05:44:52Z",
+          "url": "https://github.com/google/zerocopy/pull/3326/commits/f55a6dde7143cf5519c1e0ea628d358222364cf3"
+        },
+        "date": 1777386093100,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
