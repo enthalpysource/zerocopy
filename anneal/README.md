@@ -7,7 +7,16 @@
 > **Note:** Anneal is currently in pre-alpha. You're welcome to use it, but many things
 > are broken or unsound, and we will change APIs frequently.
 
-Anneal enables "literate verification" of safe and `unsafe` code. It allows you to write specifications and proofs of correctness and soundness directly within your Rust source files using standard documentation comments.
+Anneal enables "literate verification" of safe and `unsafe` code. It allows you to write [Lean](https://lean-lang.org/) specifications and proofs of correctness and soundness directly within your Rust source files using standard documentation comments.
+
+By checking the validity of proofs using Lean, Anneal removes most `unsafe` code from your [trusted computing base](https://en.wikipedia.org/wiki/Trusted_computing_base) (TCB).*
+
+| TCB without Anneal | TCB with Anneal |
+| ------------------- | ---------------- |
+| Rust toolchain      | Rust + Anneal toolchains   |
+| `unsafe` code       | Unsupported `unsafe` code* |
+
+\* *Anneal cannot verify the soundness of certain constructs such as FFI or inline assembly. These constructs remain in the TCB.*
 
 Anneal is designed for use by both human engineers and AI coding agents. By providing machine-checked guarantees for safe and `unsafe` code, Anneal eliminates the cognitive burden of manual review and enables the safe acceleration of systems software development. We have [demonstrated](https://drive.google.com/file/d/1areyf438L0izETTHj7PRMnoSHSX4kM29/view?usp=sharing) that Antigravity can author `unsafe` Rust code and prove its soundness using Anneal.
 
