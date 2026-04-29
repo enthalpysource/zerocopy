@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777420109706,
+  "lastUpdate": 1777421328245,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3253,6 +3253,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1076,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc525228994b0eafbc600981e1955f2f442c5e0b",
+          "message": "[anneal][README] Tighten wording (#3328)\n\nRelease 0.1.0-alpha.21.\n\ngherrit-pr-id: Ggwzrriapr76e6dx74cv4skvdp7ikd37h",
+          "timestamp": "2026-04-28T23:20:52Z",
+          "tree_id": "ed7bfb5b08e51dfc389d3beadf64648ab5bea3b3",
+          "url": "https://github.com/google/zerocopy/commit/bc525228994b0eafbc600981e1955f2f442c5e0b"
+        },
+        "date": 1777421326597,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1154,
             "unit": "seconds"
           }
         ]
