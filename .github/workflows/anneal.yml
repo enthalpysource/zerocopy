@@ -31,7 +31,7 @@ env:
 jobs:
   build_docker_env:
     name: Build Docker image
-    runs-on: ubuntu-24.04-64core
+    runs-on: ubuntu-latest
     permissions:
       contents: write # Required to push benchmark data to the storage branch
       packages: write # required to push docker caches to ghcr.io
@@ -78,10 +78,10 @@ jobs:
           tags: ghcr.io/google/zerocopy/anneal:${{ steps.docker_tag.outputs.tag }}
           provenance: false
           # Use zstd compression at level 19 to minimize image size and maximize
-          # decompression speed on matrix runners. This shifts the heavy compression
-          # work to the beefy 64-core runner used for building the image, saving
-          # time in the consumer jobs that pull the image. Level 19 is the practical
-          # maximum for standard use.
+          # decompression speed on matrix runners. This shifts the heavy
+          # compression work to the runner used for building the image, saving
+          # time in the consumer jobs that pull the image. Level 19 is the
+          # practical maximum for standard use.
           outputs: type=image,compression=zstd,compression-level=19,force-compression=true
           build-args: |
             UID=${{ steps.get_uid.outputs.uid }}
@@ -160,7 +160,7 @@ jobs:
     # This job measures the size of the Docker image built in the previous step
     # and records it to maintain a history of resource usage over time.
     name: Measure Docker image size
-    runs-on: ubuntu-24.04-64core
+    runs-on: ubuntu-latest
     needs: build_docker_env
     # We only run this on the main branch (and the test branch for verification)
     # to ensure we only track history for merged code.
@@ -228,7 +228,7 @@ jobs:
 
   anneal_tests:
     name: Anneal Tests
-    runs-on: ubuntu-24.04-64core
+    runs-on: ubuntu-latest
     needs: build_docker_env
     permissions:
       contents: write # Required to push benchmark data to the storage branch
