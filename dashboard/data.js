@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777421844564,
+  "lastUpdate": 1777652919154,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3311,6 +3311,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1154,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "0fc280083ba437f6717e994c27169f36ff64b669",
+          "message": "[ci] Run Anneal jobs on free-tier runners",
+          "timestamp": "2026-04-29T03:07:30Z",
+          "url": "https://github.com/google/zerocopy/pull/3330/commits/0fc280083ba437f6717e994c27169f36ff64b669"
+        },
+        "date": 1777652916529,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 8,
             "unit": "seconds"
           }
         ]
