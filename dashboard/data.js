@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777657662978,
+  "lastUpdate": 1777657747417,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3363,6 +3363,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c67c8ecc912d7f45e68b5274de789a15b42cf4aa",
+          "message": "[ci] Run Anneal jobs on free-tier runners (#3330)\n\ngherrit-pr-id: Gl375z4s3fozt4u74gde7bzsp3ey4fi3n",
+          "timestamp": "2026-05-01T17:07:29Z",
+          "tree_id": "a24079fd4d2bb340570f054bd0bf6c414eba80f0",
+          "url": "https://github.com/google/zerocopy/commit/c67c8ecc912d7f45e68b5274de789a15b42cf4aa"
+        },
+        "date": 1777657745285,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 9,
             "unit": "seconds"
           }
         ]
