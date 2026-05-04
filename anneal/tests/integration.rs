@@ -526,8 +526,25 @@ echo "---END-INVOCATION---" >> "{}"
         // directory to share build artifacts across tests and avoid redundant
         // recompilation.
         cmd.env("LAKE_CACHE_DIR", toolchain_path.join("lake-cache"));
+        let toolchain_base = toolchain_path.parent().unwrap().parent().unwrap().parent().unwrap();
+        cmd.env("ANNEAL_TOOLCHAIN_DIR", toolchain_base);
         cmd.env("ANNEAL_USE_PATH_FOR_TOOLS", "1");
         cmd.env("RAYON_NUM_THREADS", "1");
+
+        // Inject the toolchain's Rust library path into LD_LIBRARY_PATH.
+        //
+        // Why: In the Nix environment, compiled compiler shims (like
+        // `charon-driver` or `rustc`) are dynamically linked. When executed
+        // within the integration test sandbox, they must be able to resolve
+        // their shared Rust compiler libraries (e.g., `libstd-*.so`).
+        // Prepending `rust/lib` ensures standard dynamic link resolution.
+        let rust_lib_path = toolchain_path.join("rust/lib");
+        let original_ld_library_path = std::env::var_os("LD_LIBRARY_PATH").unwrap_or_default();
+        let new_ld_library_path = std::env::join_paths(
+            std::iter::once(rust_lib_path).chain(std::env::split_paths(&original_ld_library_path)),
+        )
+        .unwrap();
+        cmd.env("LD_LIBRARY_PATH", new_ld_library_path);
 
         let original_path = std::env::var_os("PATH").unwrap_or_default();
         let new_path = std::env::join_paths(
@@ -544,17 +561,6 @@ echo "---END-INVOCATION---" >> "{}"
         cmd.env("PATH", new_path);
         cmd.env("RUSTFLAGS", rustflags);
 
-        // Configure git to trust all directories in this test sandbox
-        // Configure Git to trust all directories within this test sandbox.
-        // This is required because tests run as the host user but may access
-        // files created by the `anneal` user in the Docker image, triggering
-        // Git's 'dubious ownership' security check.
-        let status = std::process::Command::new("git")
-            .args(["config", "--global", "--add", "safe.directory", "*"])
-            .env("HOME", &self.home_dir)
-            .status()
-            .expect("Failed to run git config");
-        assert!(status.success(), "git config failed");
 
         // Redirect HOME to the persistent home directory within the sandbox.
         // This ensures that the toolchain is looked up and potentially

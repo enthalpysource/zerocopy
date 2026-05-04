@@ -194,15 +194,18 @@ jobs:
           echo "aeneas_tag=$AENEAS_TAG" >> $GITHUB_OUTPUT
           echo "rust_date=$RUST_DATE" >> $GITHUB_OUTPUT
 
-      - name: Install elan
-        run: |
-          set -eo pipefail
-          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Install nix
+        uses: nixbuild/nix-quick-install-action@v30
+        with:
+          nix_conf: |
+            keep-env-derivations = true
+            keep-outputs = true
 
-      - name: Install zstd (macOS)
-        if: runner.os == 'macOS'
-        run: brew install zstd
+      - name: Restore Nix Cache
+        uses: nix-community/cache-nix-action/restore@v6
+        with:
+          primary-key: ${{ matrix.os }}-release-${{ hashFiles('**/flake.lock') }}
+          restore-prefixes-first-match: ${{ matrix.os }}-release
 
       - name: Download and Package
         env:
@@ -215,7 +218,16 @@ jobs:
           STAGING_DIR="dist_staging"
           mkdir -p "$STAGING_DIR"
           
-          ./tools/build-prebuilt.sh "$RUST_TRIPLE"
+          nix develop --command ./tools/build-prebuilt.sh "$RUST_TRIPLE"
+
+      - name: Save Nix Cache
+        if: always()
+        uses: nix-community/cache-nix-action/save@v6
+        with:
+          primary-key: ${{ matrix.os }}-release-${{ hashFiles('**/flake.lock') }}
+          gc-max-store-size: 2G
+          purge: true
+          purge-created: 604800
           
       - name: Upload Artifact
         if: github.event_name == 'workflow_dispatch' || (github.event_name != 'pull_request' && needs.release.result == 'success')

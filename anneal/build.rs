@@ -40,34 +40,30 @@ fn main() {
         println!("cargo:rustc-env={}={}", env_var, value);
     }
 
-    // Parse [package.metadata.anneal.dependencies]
-    if let Some(anneal_metadata) = cargo_toml
+    // Parse [package.metadata.anneal.dependencies.omnibus]
+    if let Some(omnibus_metadata) = cargo_toml
         .get("package")
         .and_then(|p| p.get("metadata"))
         .and_then(|m| m.get("anneal"))
         .and_then(|h| h.get("dependencies"))
-        .and_then(|d| d.as_table())
+        .and_then(|d| d.get("omnibus"))
     {
-        for (dep_name, dep_meta) in anneal_metadata {
-            let dep_upper = dep_name.to_uppercase();
-            if let Some(tag) = dep_meta.get("tag").and_then(|t| t.as_str()) {
-                println!("cargo:rustc-env=ANNEAL_{}_TAG={}", dep_upper, tag);
-            }
+        if let Some(tag) = omnibus_metadata.get("tag").and_then(|t| t.as_str()) {
+            println!("cargo:rustc-env=ANNEAL_OMNIBUS_TAG={}", tag);
+        }
 
-            if let Some(date) = dep_meta.get("date").and_then(|t| t.as_str()) {
-                println!("cargo:rustc-env=ANNEAL_{}_DATE={}", dep_upper, date);
-            }
-
-            if let Some(checksums) = dep_meta.get("checksums").and_then(|c| c.as_table()) {
-                for (platform, checksum) in checksums {
-                    if let Some(hash) = checksum.as_str() {
-                        // Standardize platform name for env var (dashes -> underscores, upper case)
-                        let env_platform = platform.replace('-', "_").to_uppercase();
-                        println!(
-                            "cargo:rustc-env=ANNEAL_{}_CHECKSUM_{}={}",
-                            dep_upper, env_platform, hash
-                        );
-                    }
+        if let Some(checksums) = omnibus_metadata.get("checksums").and_then(|c| c.as_table()) {
+            for (platform, checksum) in checksums {
+                if let Some(hash) = checksum.as_str() {
+                    // Convert the platform identifier into a standardized
+                    // environment variable suffix (e.g., converting
+                    // "linux-x86_64" to "LINUX_X86_64" by converting dashes
+                    // to underscores and making the string uppercase).
+                    let env_platform = platform.replace('-', "_").to_uppercase();
+                    println!(
+                        "cargo:rustc-env=ANNEAL_OMNIBUS_CHECKSUM_{}={}",
+                        env_platform, hash
+                    );
                 }
             }
         }

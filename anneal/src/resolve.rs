@@ -68,7 +68,11 @@ pub struct Args {
 }
 
 #[derive(Parser, Debug)]
-pub struct SetupArgs {}
+pub struct SetupArgs {
+    /// Path to a local .tar.zst archive to use instead of downloading
+    #[arg(long)]
+    pub local_archive: Option<PathBuf>,
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]

@@ -35,9 +35,9 @@ mkdir -p "$STAGING_DIR"
 # Extract metadata from Cargo.toml.
 # We use sed to parse the TOML file. This is brittle but avoids external
 # dependencies like toml-cli.
-AENEAS_TAG=$(sed -n 's/^tag = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
-RUST_DATE="2026-02-07"
-RUST_VERSION="nightly-2026-02-07"
+AENEAS_TAG="${ANNEAL_AENEAS_TAG:-build-2026.04.07.112215-42c0e90dacf486f7d3ed5b6cde3a9a81f04915a4}"
+RUST_DATE="${ANNEAL_RUST_DATE:-2026-02-07}"
+RUST_VERSION="${ANNEAL_RUST_VERSION:-nightly-2026-02-07}"
 
 echo "Detected Aeneas Tag: $AENEAS_TAG"
 echo "Detected Rust Date: $RUST_DATE"

@@ -66,7 +66,8 @@ fn main() -> anyhow::Result<()> {
 
     let mut args_iter = std::env::args_os().peekable();
     let bin_name = args_iter.next().unwrap_or_else(|| "cargo-anneal".into());
-    // If we're being run as a cargo plugin, the second argument will be "anneal".
+    // If we are being executed as a cargo plugin, the second argument
+    // in the command line arguments array will be "anneal".
     if args_iter.peek().is_some_and(|arg| arg == "anneal") {
         args_iter.next();
     }
@@ -91,8 +92,8 @@ fn main() -> anyhow::Result<()> {
                 Ok(())
             })?;
         }
-        Commands::Setup(resolve::SetupArgs {}) => {
-            setup::run_setup()?;
+        Commands::Setup(setup_args) => {
+            setup::run_setup(setup_args)?;
         }
         Commands::ToolchainPath => {
             let toolchain = setup::Toolchain::resolve()?;
