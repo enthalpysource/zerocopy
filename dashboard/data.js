@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778005478233,
+  "lastUpdate": 1778015419969,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3496,6 +3496,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 11,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "54bd85c25824a1dba5cc245d9358ffbf2b63e91f",
+          "message": "[anneal] Replace annotation syntax with verbatim Lean",
+          "timestamp": "2026-05-05T12:39:38Z",
+          "url": "https://github.com/google/zerocopy/pull/3321/commits/54bd85c25824a1dba5cc245d9358ffbf2b63e91f"
+        },
+        "date": 1778015417580,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1992,
             "unit": "seconds"
           }
         ]
