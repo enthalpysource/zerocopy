@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777939710182,
+  "lastUpdate": 1777942055307,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -5678,6 +5678,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 2268,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "44c9b1430f14d621ee57516893e59b216911ebaf",
+          "message": "[anneal] Replace Docker with Nix",
+          "timestamp": "2026-05-04T18:39:21Z",
+          "url": "https://github.com/google/zerocopy/pull/3336/commits/44c9b1430f14d621ee57516893e59b216911ebaf"
+        },
+        "date": 1777942053177,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 129,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 2113,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 2320,
             "unit": "seconds"
           }
         ]
