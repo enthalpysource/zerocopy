@@ -374,6 +374,37 @@ fn make_writable(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Recursively removes write permissions from all files and directories.
+fn make_read_only_recursive(path: &Path) -> Result<()> {
+    if path.exists() {
+        for entry in WalkDir::new(path) {
+            let entry = entry.context("Failed to walk directory for read-only setup")?;
+            let p = entry.path();
+            let mut perms = fs::metadata(p)?.permissions();
+            perms.set_readonly(true);
+            fs::set_permissions(p, perms)
+                .with_context(|| format!("Failed to set read-only permissions on {:?}", p))?;
+        }
+    }
+    Ok(())
+}
+
+/// Recursively restores write permissions for the owner.
+fn make_writable_recursive(path: &Path) -> Result<()> {
+    if path.exists() {
+        for entry in WalkDir::new(path) {
+            let entry = entry.context("Failed to walk directory for writable setup")?;
+            let p = entry.path();
+            let mut perms = fs::metadata(p)?.permissions();
+            #[allow(clippy::permissions_set_readonly_false)]
+            perms.set_readonly(false);
+            fs::set_permissions(p, perms)
+                .with_context(|| format!("Failed to set writable permissions on {:?}", p))?;
+        }
+    }
+    Ok(())
+}
+
 /// Decodes a hexadecimal string into its byte representation.
 const fn decode_hex(s: &str) -> Option<[u8; 32]> {
     let bytes = s.as_bytes();
@@ -687,11 +718,12 @@ fn install_lean_toolchain() -> Result<()> {
 }
 
 /// Pre-builds the Aeneas Lean library in the extracted toolchain directory.
+///
 /// This prevents compiling the library from source when users verify their
 /// projects, which is slow and disk-heavy. It first attempts to fetch
 /// pre-compiled Mathlib artifacts using `lake exe cache get` to avoid
 /// compiling Mathlib from source, and then runs `lake build`.
-fn prebuild_lean_library(lean_dir: &Path, cache_dir: &Path) -> Result<()> {
+fn prebuild_aeneas_lean_library(lean_dir: &Path, cache_dir: &Path) -> Result<()> {
     println!("Pre-building Aeneas Lean library at {:?}...", lean_dir);
 
     // Fetch Mathlib cache
@@ -820,6 +852,27 @@ pub fn run_setup() -> Result<()> {
         bail!("`git commit` failed");
     }
 
+    // Read the newly created HEAD commit hash and write it to a static
+    // file `aeneas-commit.txt` inside the package directory.
+    //
+    // This allows us to read the hash directly at runtime during
+    // `cargo-anneal verify` instead of executing `git rev-parse HEAD`.
+    // Spawning Git at runtime would fail inside Docker containers due to
+    // Git's "dubious ownership" security checks (caused by UID mapping
+    // mismatches between the build runner and the test runner).
+    let output = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(&lean_dir)
+        .output()
+        .context("Failed to run `git rev-parse HEAD` during setup")?;
+    if !output.status.success() {
+        bail!("`git rev-parse HEAD` failed during setup");
+    }
+    let commit_hash =
+        String::from_utf8(output.stdout).context("Failed to parse git output")?.trim().to_string();
+    fs::write(lean_dir.join("aeneas-commit.txt"), commit_hash)
+        .context("Failed to write aeneas-commit.txt")?;
+
     // Run `lake update` to resolve dependencies and generate the manifest.
     // We do this initially with remote URLs to let Lake resolve conflicts and
     // record the specific commit hashes in `lake-manifest.json`. This also
@@ -855,259 +908,104 @@ pub fn run_setup() -> Result<()> {
     }
 
     // We now perform the core rewriting of dependency configurations to point
-    // to the filesystem-local paths we just created.
-    //
-    // We first read the manifest to know the exact resolved commit hashes,
-    // ensuring we preserve the versions resolved by Lake in step 2.
+    // to the filesystem-local paths we just created using relative path dependencies.
     let manifest_path = lean_dir.join("lake-manifest.json");
-    let revs = read_manifest_revs(&manifest_path)?;
 
-    // Helper to get rev or fallback
-    let get_rev = |name: &str| -> &str { revs.get(name).map(|s| s.as_str()).unwrap_or("main") };
-
-    // We hardcode the target strings for replacement because parsing arbitrary
-    // Lean configuration files in Rust is fragile. Since this toolchain pins
-    // specific versions of dependencies, these target strings are stable for
-    // this version of Anneal.
-    //
-    // Rewrite URLs in Aeneas lakefile.lean
+    // Rewrite URLs in Aeneas lakefile.lean to use path dependency
     let aeneas_lakefile = lean_dir.join("lakefile.lean");
-    let mathlib_rev = get_rev("mathlib");
     let target = "require mathlib from git\n  \"https://github.com/leanprover-community/mathlib4.git\" @ \"v4.28.0-rc1\"";
-    let replacement = format!(
-        "require mathlib from git\n  \"file://{}/packages/mathlib\" @ \"{}\"",
-        tmp_root.display(),
-        mathlib_rev
-    );
-    strict_replace_file_content(&aeneas_lakefile, target, &replacement)?;
+    let replacement = "require mathlib from \"../../packages/mathlib\"";
+    strict_replace_file_content(&aeneas_lakefile, target, replacement)?;
 
-    // Rewrite URLs in Mathlib lakefile.lean
+    // Rewrite URLs in Mathlib lakefile.lean to use relative path dependencies
     let mathlib_lakefile = packages_dir.join("mathlib").join("lakefile.lean");
-    let batteries_rev = get_rev("batteries");
-    let qq_rev = get_rev("Qq");
-    let aesop_rev = get_rev("aesop");
-    let proofwidgets_rev = get_rev("proofwidgets");
-    let import_graph_rev = get_rev("importGraph");
-    let lean_search_client_rev = get_rev("LeanSearchClient");
-    let plausible_rev = get_rev("plausible");
-
     let mathlib_replacements = [
         (
             "require \"leanprover-community\" / \"batteries\" @ git \"main\"",
-            format!(
-                "require batteries from git \"file://{}/packages/batteries\" @ \"{}\"",
-                tmp_root.display(),
-                batteries_rev
-            ),
+            "require batteries from \"../batteries\"",
         ),
-        (
-            "require \"leanprover-community\" / \"Qq\" @ git \"master\"",
-            format!(
-                "require Qq from git \"file://{}/packages/Qq\" @ \"{}\"",
-                tmp_root.display(),
-                qq_rev
-            ),
-        ),
+        ("require \"leanprover-community\" / \"Qq\" @ git \"master\"", "require Qq from \"../Qq\""),
         (
             "require \"leanprover-community\" / \"aesop\" @ git \"master\"",
-            format!(
-                "require aesop from git \"file://{}/packages/aesop\" @ \"{}\"",
-                tmp_root.display(),
-                aesop_rev
-            ),
+            "require aesop from \"../aesop\"",
         ),
         (
             "require \"leanprover-community\" / \"proofwidgets\" @ git \"v0.0.86\"",
-            format!(
-                "require proofwidgets from git \"file://{}/packages/proofwidgets\" @ \"{}\"",
-                tmp_root.display(),
-                proofwidgets_rev
-            ),
+            "require proofwidgets from \"../proofwidgets\"",
         ),
         (
             "require \"leanprover-community\" / \"importGraph\" @ git \"main\"",
-            format!(
-                "require importGraph from git \"file://{}/packages/importGraph\" @ \"{}\"",
-                tmp_root.display(),
-                import_graph_rev
-            ),
+            "require importGraph from \"../importGraph\"",
         ),
         (
             "require \"leanprover-community\" / \"LeanSearchClient\" @ git \"main\"",
-            format!(
-                "require LeanSearchClient from git \"file://{}/packages/LeanSearchClient\" @ \"{}\"",
-                tmp_root.display(),
-                lean_search_client_rev
-            ),
+            "require LeanSearchClient from \"../LeanSearchClient\"",
         ),
         (
             "require \"leanprover-community\" / \"plausible\" @ git \"main\"",
-            format!(
-                "require plausible from git \"file://{}/packages/plausible\" @ \"{}\"",
-                tmp_root.display(),
-                plausible_rev
-            ),
+            "require plausible from \"../plausible\"",
         ),
     ];
 
     for (target, replacement) in &mathlib_replacements {
-        strict_replace_file_content(&mathlib_lakefile, target, &replacement)?;
+        strict_replace_file_content(&mathlib_lakefile, target, replacement)?;
     }
 
-    // Rewrite URLs in Aesop lakefile.toml
+    // Rewrite URLs in Aesop lakefile.toml to use relative path dependency
     let aesop_lakefile = packages_dir.join("aesop").join("lakefile.toml");
     let target = "[[require]]\nname = \"batteries\"\ngit = \"https://github.com/leanprover-community/batteries\"\nrev = \"v4.28.0-rc1\"";
-    let replacement = format!(
-        "[[require]]\nname = \"batteries\"\ngit = \"file://{}/packages/batteries\"\nrev = \"v4.28.0-rc1\"",
-        tmp_root.display()
-    );
-    strict_replace_file_content(&aesop_lakefile, target, &replacement)?;
+    let replacement = "[[require]]\nname = \"batteries\"\npath = \"../batteries\"";
+    strict_replace_file_content(&aesop_lakefile, target, replacement)?;
 
-    // Rewrite URLs in ImportGraph lakefile.toml
+    // Rewrite URLs in ImportGraph lakefile.toml to use relative path dependency
     let import_graph_lakefile = packages_dir.join("importGraph").join("lakefile.toml");
     let target = "[[require]]\nname = \"Cli\"\nscope = \"leanprover\"\nrev = \"v4.28.0-rc1\"";
-    let replacement = format!(
-        "[[require]]\nname = \"Cli\"\ngit = \"file://{}/packages/Cli\"\nrev = \"v4.28.0-rc1\"",
-        tmp_root.display()
-    );
-    strict_replace_file_content(&import_graph_lakefile, target, &replacement)?;
+    let replacement = "[[require]]\nname = \"Cli\"\npath = \"../Cli\"";
+    strict_replace_file_content(&import_graph_lakefile, target, replacement)?;
 
-    // We must also update the manifest file itself. If we only update the
-    // `lakefile`s, Lake will see that the manifest is out of date and attempt
-    // to re-resolve or re-clone from GitHub.
-    //
-    // Rewrite URLs in lake-manifest.json
-    update_manifest_urls(&manifest_path, tmp_root)?;
-
-    prebuild_lean_library(&lean_dir, &toolchain.cache_dir())?;
-
-    // Phase 2: Rewrite URLs to point to the final toolchain root.
-    //
-    // During the build in Phase 1, we used paths pointing to the temporary
-    // directory so that Lake could resolve and build dependencies correctly.
-    // Now that the build is complete, we must rewrite these paths to point
-    // to the final installation directory (`toolchain.root`) before we
-    // perform the atomic swap. This ensures that when the toolchain is
-    // used by user projects, all internal references are valid.
-    println!("Rewriting URLs to final toolchain root...");
-
-    let target_aeneas = format!(
-        "require mathlib from git\n  \"file://{}/packages/mathlib\" @ \"{}\"",
-        tmp_root.display(),
-        mathlib_rev
-    );
-    let replacement_aeneas = format!(
-        "require mathlib from git\n  \"file://{}/packages/mathlib\" @ \"{}\"",
-        toolchain.root.display(),
-        mathlib_rev
-    );
-    strict_replace_file_content(&aeneas_lakefile, &target_aeneas, &replacement_aeneas)?;
-
-    for (orig_target, phase1_rep) in &mathlib_replacements {
-        let phase2_rep = phase1_rep
-            .replace(&tmp_root.display().to_string(), &toolchain.root.display().to_string());
-        strict_replace_file_content(&mathlib_lakefile, &phase1_rep, &phase2_rep)?;
+    // Delete the manifest lockfile (`lake-manifest.json`). This is
+    // critical because Aeneas is resolved as a local dependency package
+    // in user projects. If Aeneas preserves its own lockfile, Lake will
+    // read it at runtime and attempt to resolve nested dependencies
+    // (like `mathlib`) via Git, bypassing our local path overrides.
+    if manifest_path.exists() {
+        fs::remove_file(&manifest_path).context("Failed to delete manifest")?;
     }
 
-    let target_aesop = format!(
-        "[[require]]\nname = \"batteries\"\ngit = \"file://{}/packages/batteries\"\nrev = \"v4.28.0-rc1\"",
-        tmp_root.display()
-    );
-    let replacement_aesop = format!(
-        "[[require]]\nname = \"batteries\"\ngit = \"file://{}/packages/batteries\"\nrev = \"v4.28.0-rc1\"",
-        toolchain.root.display()
-    );
-    strict_replace_file_content(&aesop_lakefile, &target_aesop, &replacement_aesop)?;
+    prebuild_aeneas_lean_library(&lean_dir, &tmp_root.join("lake-cache"))?;
 
-    let target_import_graph = format!(
-        "[[require]]\nname = \"Cli\"\ngit = \"file://{}/packages/Cli\"\nrev = \"v4.28.0-rc1\"",
-        tmp_root.display()
-    );
-    let replacement_import_graph = format!(
-        "[[require]]\nname = \"Cli\"\ngit = \"file://{}/packages/Cli\"\nrev = \"v4.28.0-rc1\"",
-        toolchain.root.display()
-    );
-    strict_replace_file_content(
-        &import_graph_lakefile,
-        &target_import_graph,
-        &replacement_import_graph,
-    )?;
-
-    // Also update manifest for Phase 2
-    update_manifest_urls(&manifest_path, &toolchain.root)?;
-
-    // Commit changes in local repositories so that Git clone operations
-    // performed by Lake in user projects will see the rewritten URLs.
-    println!("Committing changes in local repositories...");
-
-    // Commit in Aeneas
-    let status = Command::new("git")
-        .args(["add", "."])
+    // Pre-compile the `graph` tool in the `importGraph` dependency. This
+    // is required because the Aeneas library itself does not import
+    // `importGraph`, so a standard `lake build` skips it.
+    //
+    // We must pre-compile it during setup so that the `lake exe graph`
+    // tool is pre-built and available in the final read-only toolchain.
+    println!("Pre-compiling importGraph graph tool inside toolchain...");
+    let status = Command::new("lake")
+        .args(["build", "importGraph/graph"])
         .current_dir(&lean_dir)
         .status()
-        .context("Failed to run `git add` in Aeneas")?;
+        .context("Failed to build importGraph/graph in toolchain")?;
     if !status.success() {
-        bail!("`git add` failed in Aeneas");
+        bail!("Failed to build importGraph/graph in toolchain");
     }
 
-    let status = Command::new("git")
-        .args(["commit", "-m", "Anneal: rewrite dependencies to local paths", "-q"])
-        .env("GIT_AUTHOR_NAME", "Anneal")
-        .env("GIT_AUTHOR_EMAIL", "anneal@example.com")
-        .env("GIT_COMMITTER_NAME", "Anneal")
-        .env("GIT_COMMITTER_EMAIL", "anneal@example.com")
-        .current_dir(&lean_dir)
-        .status()
-        .context("Failed to run `git commit` in Aeneas")?;
-    if !status.success() {
-        bail!("`git commit` failed in Aeneas");
-    }
-
-    // Commit in dependencies
+    // Delete manifest files from dependencies AFTER pre-building. This is
+    // critical because mathlib's cache fetching tool (run during
+    // prebuild) requires its own manifest to function. However, once the
+    // toolchain is installed, we must not have any manifest files in the
+    // dependencies, otherwise Lake will read them during user project
+    // verification and attempt to resolve nested dependencies via Git,
+    // bypassing our path overrides.
     if packages_dir.exists() {
         for entry in fs::read_dir(&packages_dir).context("Failed to read packages directory")? {
             let entry = entry.context("Failed to read directory entry")?;
             let path = entry.path();
             if path.is_dir() {
-                if path.join(".git").exists() {
-                    let output = Command::new("git")
-                        .args(["status", "--porcelain"])
-                        .current_dir(&path)
-                        .output()
-                        .context("Failed to run `git status` in dependency")?;
-
-                    if !output.stdout.is_empty() {
-                        println!(
-                            "Committing changes in dependency: {:?}",
-                            path.file_name().unwrap()
-                        );
-                        let status = Command::new("git")
-                            .args(["add", "."])
-                            .current_dir(&path)
-                            .status()
-                            .context("Failed to run `git add` in dependency")?;
-                        if !status.success() {
-                            bail!("`git add` failed in dependency {:?}", path);
-                        }
-
-                        let status = Command::new("git")
-                            .args([
-                                "commit",
-                                "-m",
-                                "Anneal: rewrite dependencies to local paths",
-                                "-q",
-                            ])
-                            .env("GIT_AUTHOR_NAME", "Anneal")
-                            .env("GIT_AUTHOR_EMAIL", "anneal@example.com")
-                            .env("GIT_COMMITTER_NAME", "Anneal")
-                            .env("GIT_COMMITTER_EMAIL", "anneal@example.com")
-                            .current_dir(&path)
-                            .status()
-                            .context("Failed to run `git commit` in dependency")?;
-                        if !status.success() {
-                            bail!("`git commit` failed in dependency {:?}", path);
-                        }
-                    }
+                let dep_manifest = path.join("lake-manifest.json");
+                if dep_manifest.exists() {
+                    fs::remove_file(&dep_manifest)
+                        .context("Failed to delete dependency manifest")?;
                 }
             }
         }
@@ -1125,27 +1023,11 @@ pub fn run_setup() -> Result<()> {
     let tmp_path_str = temp_dir.path().to_str().unwrap();
     let final_path_str = toolchain.root.to_str().unwrap();
 
-    // Helper closure to process a build directory
-    let mut process_build_dir = |dir: &Path| -> Result<()> {
-        if dir.exists() {
-            let walker = WalkDir::new(dir).into_iter();
-            for entry in walker {
-                let entry = entry.context("Failed to walk build directory")?;
-                let path = entry.path();
-                if path.is_file() && path.extension().map_or(false, |ext| ext == "trace") {
-                    let content = fs::read_to_string(path).context("Failed to read trace file")?;
-                    if content.contains(tmp_path_str) {
-                        let new_content = content.replace(tmp_path_str, final_path_str);
-                        fs::write(path, new_content).context("Failed to write trace file")?;
-                    }
-                }
-            }
-        }
-        Ok(())
-    };
-
     // Process Aeneas build dir
-    process_build_dir(&lean_dir.join(".lake").join("build"))?;
+    crate::util::patch_trace_files(
+        &lean_dir.join(".lake").join("build"),
+        &[(tmp_path_str, final_path_str)],
+    )?;
 
     // Process dependencies build dirs
     if packages_dir.exists() {
@@ -1153,7 +1035,10 @@ pub fn run_setup() -> Result<()> {
             let entry = entry.context("Failed to read directory entry")?;
             let path = entry.path();
             if path.is_dir() {
-                process_build_dir(&path.join(".lake").join("build"))?;
+                crate::util::patch_trace_files(
+                    &path.join(".lake").join("build"),
+                    &[(tmp_path_str, final_path_str)],
+                )?;
             }
         }
     }
@@ -1166,10 +1051,20 @@ pub fn run_setup() -> Result<()> {
     // allow the rename to succeed on Unix systems.
     let tmp_path = temp_dir.into_path();
     if toolchain.root.exists() {
+        make_writable_recursive(&toolchain.root)?;
         fs::remove_dir_all(&toolchain.root).context("Failed to remove old toolchain directory")?;
     }
     fs::rename(&tmp_path, &toolchain.root)
         .context("Failed to rename temporary toolchain directory to target")?;
+
+    // Create an empty .lock file during the setup phase while the
+    // toolchain directory is still writable. This ensures that future
+    // verify runs (which operate in read-only mode) can open the existing
+    // lock file to acquire shared file locks.
+    let lock_path = toolchain.root.join(".lock");
+    fs::File::create(&lock_path).context("Failed to create lock file in setup")?;
+
+    make_read_only_recursive(&toolchain.root)?;
 
     Ok(())
 }

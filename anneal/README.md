@@ -109,7 +109,7 @@ impl std::ops::Div<PositiveUsize> for usize {
 Install Anneal and its required toolchains (Charon and Aeneas):
 
 ```bash
-cargo install cargo-anneal@0.1.0-alpha.21
+cargo install cargo-anneal@0.1.0-alpha.22
 cargo anneal setup
 ```
 
