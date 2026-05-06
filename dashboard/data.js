@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778035225878,
+  "lastUpdate": 1778035930884,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -5933,6 +5933,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 1130,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "6ee85014a75f4ecbde8091c0fff0cbb7c668c931",
+          "message": "Optimize run_lake by copying precompiled config folders, renaming Aeneas config, and dynamically patching trace indices to achieve a ~19% run_lake speedup",
+          "timestamp": "2026-05-05T12:39:38Z",
+          "url": "https://github.com/google/zerocopy/pull/3341/commits/6ee85014a75f4ecbde8091c0fff0cbb7c668c931"
+        },
+        "date": 1778035928633,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 89,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 503,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 678,
             "unit": "seconds"
           }
         ]
