@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778035930884,
+  "lastUpdate": 1778035969937,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -5968,6 +5968,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 678,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "8ec4371ce2524cb3f86c1ca1c1b6c5ae39a5abb3",
+          "message": "Polish code comments across setup.rs and aeneas.rs to strictly conform to comment-guidelines (80-column wrapping, objective tone, self-contained descriptions)",
+          "timestamp": "2026-05-05T12:39:38Z",
+          "url": "https://github.com/google/zerocopy/pull/3342/commits/8ec4371ce2524cb3f86c1ca1c1b6c5ae39a5abb3"
+        },
+        "date": 1778035967681,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 93,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 555,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 731,
             "unit": "seconds"
           }
         ]
