@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778019961581,
+  "lastUpdate": 1778032512705,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3546,6 +3546,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 9,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "d38657fc5f3b41967cd5478f4ba125ea5a1ddad0",
+          "message": "Implement optimized symlink-copy package materializer and static commit hash bypass to achieve 40x speedup and 100% concurrent safety",
+          "timestamp": "2026-05-05T12:39:38Z",
+          "url": "https://github.com/google/zerocopy/pull/3340/commits/d38657fc5f3b41967cd5478f4ba125ea5a1ddad0"
+        },
+        "date": 1778032510404,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 953,
             "unit": "seconds"
           }
         ]
