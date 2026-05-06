@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778033673745,
+  "lastUpdate": 1778035211069,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3571,6 +3571,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 953,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "8ec4371ce2524cb3f86c1ca1c1b6c5ae39a5abb3",
+          "message": "Polish code comments across setup.rs and aeneas.rs to strictly conform to comment-guidelines (80-column wrapping, objective tone, self-contained descriptions)",
+          "timestamp": "2026-05-05T12:39:38Z",
+          "url": "https://github.com/google/zerocopy/pull/3342/commits/8ec4371ce2524cb3f86c1ca1c1b6c5ae39a5abb3"
+        },
+        "date": 1778035209025,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1065,
             "unit": "seconds"
           }
         ]
