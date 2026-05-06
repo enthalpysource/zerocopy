@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778099910432,
+  "lastUpdate": 1778100477559,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6270,6 +6270,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 735,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be6f199fdbe4e568ac63289e2bdbd4a5f783d444",
+          "message": "[anneal] Don't copy Lean build artifacts from `~/.anneal` (#3344)\n\nPrior to this change, Lake verification relied on recursively copying\nthe entire global precompiled toolchain package directory (~5,000\n`.olean` files, ~5GB) into a build directory. This was obviously slow\nand caused massive disk bloat.\n\nIn this commit, we instead:\n- Copy only those files which Lake will attempt to write, and symlink\n  all other files. In practice, this means that only the smallest files\n  are actually copied. (Note: Copying is necessary *at all* because Lake\n  will write to some files in the directories of a package's\n  *dependencies* if those dependencies are filesystem-local. Without\n  copying, this would result in concurrent writes to the user-global\n  `~/.anneal/toolchain` directory.)\n- Mark the `~/.anneal/toolchain/<toolchain>` directory as recursively\n  read-only to ensure that any attempted writes fail loudly.\n\nRelease 0.1.0-alpha.22.\n\ngherrit-pr-id: Gks63dnqyjzxt6s6sgowdaz63rogw5kz3",
+          "timestamp": "2026-05-06T19:44:41Z",
+          "tree_id": "73f8ba779cf997b8e10d15cfb9573283a6ee505b",
+          "url": "https://github.com/google/zerocopy/commit/be6f199fdbe4e568ac63289e2bdbd4a5f783d444"
+        },
+        "date": 1778100474991,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 90,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 577,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 750,
             "unit": "seconds"
           }
         ]
