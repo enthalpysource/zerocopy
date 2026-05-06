@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778094453340,
+  "lastUpdate": 1778095999838,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3671,6 +3671,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1112,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "2f1d4dfe3fb6309820f61fc2f57cae83e152d2dc",
+          "message": "[anneal] Don't copy Lean build artifacts from `~/.anneal`",
+          "timestamp": "2026-05-06T05:47:52Z",
+          "url": "https://github.com/google/zerocopy/pull/3344/commits/2f1d4dfe3fb6309820f61fc2f57cae83e152d2dc"
+        },
+        "date": 1778095997188,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1062,
             "unit": "seconds"
           }
         ]
