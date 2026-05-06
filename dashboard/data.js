@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778035969937,
+  "lastUpdate": 1778091007550,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3621,6 +3621,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1075,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "344fa4d987e5c17cd669377699404d38ebadbc4b",
+          "message": "[anneal] WIP",
+          "timestamp": "2026-05-06T05:47:52Z",
+          "url": "https://github.com/google/zerocopy/pull/3344/commits/344fa4d987e5c17cd669377699404d38ebadbc4b"
+        },
+        "date": 1778091004357,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1071,
             "unit": "seconds"
           }
         ]
