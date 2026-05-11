@@ -153,6 +153,14 @@ const _: () = unsafe {
     );
     impl_or_verify!(T: FromZeros => FromZeros for Unalign<T>);
     impl_or_verify!(T: FromBytes => FromBytes for Unalign<T>);
+    impl_or_verify!(
+        T: InitializeIntoBytes => InitializeIntoBytes for Unalign<T>;
+        |c| {
+            let _ = c;
+            // TODO
+            //T::initialize_padding(c.transmute::<T, pointer::invariant::Valid, (pointer::BecauseMutationCompatible, _)>()
+        }
+    );
     impl_or_verify!(T: IntoBytes => IntoBytes for Unalign<T>);
 };
 
@@ -636,6 +644,14 @@ mod read_only_def {
     }
 
     impl<T: ?Sized> ReadOnly<T> {
+        /// TODO
+        #[inline(always)]
+        pub fn from_mut(t: &mut T) -> &mut ReadOnly<T> {
+            let ptr = crate::Ptr::from_mut(t).transmute::<Self, _, _>();
+            let ptr = unsafe { ptr.assume_alignment() };
+            ptr.as_mut()
+        }
+
         #[inline(always)]
         pub(crate) fn as_mut(r: &mut ReadOnly<T>) -> &mut T {
             // SAFETY: `r: &mut ReadOnly`, so this doesn't violate the invariant
@@ -675,6 +691,10 @@ const _: () = unsafe {
     );
     unsafe_impl!(T: ?Sized + FromZeros => FromZeros for ReadOnly<T>);
     unsafe_impl!(T: ?Sized + FromBytes => FromBytes for ReadOnly<T>);
+    unsafe_impl!(T: ?Sized + InitializeIntoBytes => InitializeIntoBytes for ReadOnly<T>; |slf| {
+        // TODO: Fix alignment.
+        T::initialize_padding(slf.transmute());
+    });
     unsafe_impl!(T: ?Sized + IntoBytes => IntoBytes for ReadOnly<T>);
 };
 

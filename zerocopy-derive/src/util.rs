@@ -309,6 +309,7 @@ pub(crate) enum Trait {
     TryFromBytes,
     FromZeros,
     FromBytes,
+    InitializeIntoBytes,
     IntoBytes,
     Unaligned,
     Sized,
@@ -337,6 +338,7 @@ impl ToTokens for Trait {
             Trait::TryFromBytes => "TryFromBytes",
             Trait::FromZeros => "FromZeros",
             Trait::FromBytes => "FromBytes",
+            Trait::InitializeIntoBytes => "InitializeIntoBytes",
             Trait::IntoBytes => "IntoBytes",
             Trait::Unaligned => "Unaligned",
             Trait::Sized => "Sized",
@@ -359,6 +361,7 @@ impl ToTokens for Trait {
             | Trait::FromZeros
             | Trait::FromBytes
             | Trait::IntoBytes
+            | Trait::InitializeIntoBytes
             | Trait::Unaligned
             | Trait::Sized
             | Trait::ByteHash
