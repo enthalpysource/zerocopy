@@ -88,6 +88,13 @@ impl Platform {
         }
     }
 
+    /// Returns the baseline remote URL from which the pre-verified toolchain archive
+    /// for this platform can be downloaded.
+    ///
+    /// This function constructs an absolute URL by interpolating the target platform's
+    /// specific archive filename onto a base URL baked into the binary at compile time
+    /// via `SETUP_ARCHIVE_BASE_URL`. This compile-time binding guarantees that downloads
+    /// exactly correspond to the release artifacts verified during the build phase.
     pub fn remote_url(&self) -> String {
         use Platform::*;
         const BASE: &str = env!("SETUP_ARCHIVE_BASE_URL");
@@ -103,10 +110,115 @@ impl Platform {
 /// Setup configuration
 pub struct Config {}
 
+/// An archive format that can be extracted using a particular [`Extractor`] implementation.
+pub enum ArchiveFormat {
+    TarZst,
+}
+
+impl ArchiveFormat {
+    fn new_extractor(&self) -> impl Extractor {
+        use ArchiveFormat::*;
+        match self {
+            TarZst => TarZstExtractor,
+        }
+    }
+}
+
+/// The source for an archive of dependencies that `setup` must put in place.
 pub enum Source {
+    /// A fully assembled local directory tree containing uncompressed toolchain components.
     LocalDirectory(std::path::PathBuf),
-    LocalTarZst(std::path::PathBuf),
-    Remote,
+    /// A local archive awaiting extraction.
+    LocalArchive(std::path::PathBuf, ArchiveFormat),
+    /// The archive format to expect from the statically configured remote URL source.
+    Remote(ArchiveFormat),
+}
+
+/// An active destination output stream consuming uncompressed archive file bytes.
+///
+/// Implementations of this trait represent the receiving endpoint of an extraction pipeline,
+/// such as standard library file buffers or spawned decompressor child processes.
+pub trait ArchiveWriter: std::io::Write {
+    /// Completes the extraction sequence, waiting for synchronous background tasks or child
+    /// process execution trees to terminate, and returning final pipeline execution status.
+    ///
+    /// Consuming `self` by value ensures that underlying handles or pipes are explicitly closed
+    /// prior to evaluating final termination statuses, guaranteeing resource safety and preventing
+    /// trailing file-descriptor leaks.
+    fn finish(self: Box<Self>) -> std::io::Result<()>;
+}
+
+/// An abstract extraction factory instantiating output writer pipelines targeting designated
+/// filesystem paths.
+///
+/// Consuming software can utilize this trait interface to decouple core processing workflows
+/// from concrete decompressor tools, facilitating modular injection of specialized archiving logic
+/// or isolated testing frameworks.
+pub trait Extractor {
+    /// Configures and returns an operational output writer extracting consumed stream data directly
+    /// into the specified target directory.
+    ///
+    /// Returning an object-safe boxed trait handle (`Box<dyn ArchiveWriter>`) avoids infectious
+    /// generic type parameter propagation across calling subcommands while granting ultimate runtime
+    /// flexibility over underlying output implementations.
+    fn extract(&self, dst: &std::path::Path) -> std::io::Result<Box<dyn ArchiveWriter>>;
+}
+
+/// A concrete [`Extractor`] implementation delegating archive extraction duties to the host system's
+/// native `tar` executable.
+///
+/// This abstraction leverages highly optimized external OS tools to unpack data streams efficiently
+/// without swelling the compilation binary footprint with dense offline dependencies.
+pub struct TarZstExtractor;
+
+/// An [`ArchiveWriter`] bridging zstd-compressed byte streams into an actively running external
+/// `tar` subprocess.
+///
+/// This writer retains exclusive ownership over the spawned child process handle and directly feeds
+/// incoming bytes into its standard input stream.
+pub struct TarZstSubprocessWriter {
+    child: std::process::Child,
+    stdin: Option<std::process::ChildStdin>,
+}
+
+impl std::io::Write for TarZstSubprocessWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.stdin.as_mut().unwrap().write(buf)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.stdin.as_mut().unwrap().flush()
+    }
+}
+
+impl ArchiveWriter for TarZstSubprocessWriter {
+    fn finish(mut self: Box<Self>) -> std::io::Result<()> {
+        self.stdin = None;
+        let status = self.child.wait()?;
+        if !status.success() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("tar extraction failed with status: {status}"),
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl Extractor for TarZstExtractor {
+    fn extract(&self, dst: &std::path::Path) -> std::io::Result<Box<dyn ArchiveWriter>> {
+        let mut child = std::process::Command::new("tar")
+            .arg("--zstd")
+            .arg("-x")
+            .arg("-C")
+            .arg(dst)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::inherit())
+            .spawn()?;
+
+        let stdin = child.stdin.take().expect("Failed to open stdin");
+        Ok(Box::new(TarZstSubprocessWriter { child, stdin: Some(stdin) }))
+    }
 }
 
 fn encode_hex(bytes: &[u8; 32]) -> String {
@@ -126,10 +238,7 @@ struct HashReader<R> {
 impl<R: std::io::Read> HashReader<R> {
     fn new(inner: R) -> Self {
         use sha2::Digest;
-        Self {
-            inner,
-            hasher: sha2::Sha256::new(),
-        }
+        Self { inner, hasher: sha2::Sha256::new() }
     }
 
     fn finalize(self) -> [u8; 32] {
@@ -147,41 +256,22 @@ impl<R: std::io::Read> std::io::Read for HashReader<R> {
     }
 }
 
-fn setup_from_tar_zst(src: impl std::io::Read, dst: &std::path::Path) -> Result<[u8; 32], std::io::Error> {
+fn setup_from_archive(
+    src: impl std::io::Read,
+    dst: &std::path::Path,
+    extractor: &dyn Extractor,
+) -> Result<[u8; 32], std::io::Error> {
     let parent = dst.parent().expect("toolchains directory has parent");
-    let temp_dir = tempfile::Builder::new()
-        .prefix("setup-")
-        .tempdir_in(parent)?;
+    let temp_dir = tempfile::Builder::new().prefix("setup-").tempdir_in(parent)?;
 
+    let mut archive_writer = extractor.extract(temp_dir.path())?;
     let mut hash_reader = HashReader::new(src);
-
-    let mut child = std::process::Command::new("tar")
-        .arg("--zstd")
-        .arg("-x")
-        .arg("-C")
-        .arg(temp_dir.path())
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::inherit())
-        .spawn()?;
-
-    let mut stdin = child.stdin.take().expect("Failed to open stdin");
-    std::io::copy(&mut hash_reader, &mut stdin)?;
-    drop(stdin); // close stdin to notify tar process of EOF
-
-    let status = child.wait()?;
-    if !status.success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("tar extraction failed with status: {status}"),
-        ));
-    }
+    std::io::copy(&mut hash_reader, &mut archive_writer)?;
+    archive_writer.finish()?;
 
     // Handle atomic overwrite if dst already occupies the target path
     let old_dir = if dst.symlink_metadata().is_ok() {
-        let old = tempfile::Builder::new()
-            .prefix("setup-old-")
-            .tempdir_in(parent)?;
+        let old = tempfile::Builder::new().prefix("setup-old-").tempdir_in(parent)?;
         let target_old = old.path().join("old");
         std::fs::rename(dst, &target_old)?;
         Some(old)
@@ -199,55 +289,105 @@ fn setup_from_tar_zst(src: impl std::io::Read, dst: &std::path::Path) -> Result<
     Ok(hash_reader.finalize())
 }
 
-pub fn setup(src: Source, toolchain_dir: std::path::PathBuf) -> Result<(), String> {
-    let platform = Platform::detect().expect("detect platform");
-    let expected_hash = platform.expected_archive_hash();
+#[cfg(not(unix))]
+fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ft = entry.file_type()?;
+        let target = dst.join(entry.file_name());
+        if ft.is_dir() {
+            copy_dir_all(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(&entry.path(), &target)?;
+        }
+    }
+    Ok(())
+}
+
+fn link_or_copy_dir(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(src, dst)
+    }
+    #[cfg(not(unix))]
+    {
+        #[cfg(windows)]
+        {
+            if std::os::windows::fs::symlink_dir(src, dst).is_ok() {
+                return Ok(());
+            }
+            log::warn!(
+                "Native directory symlink creation failed. Falling back to recursive directory copy."
+            );
+        }
+        #[cfg(not(windows))]
+        {
+            log::warn!(
+                "Symbolic linking not natively configured for this platform. Falling back to recursive directory copy."
+            );
+        }
+
+        copy_dir_all(src, dst)
+    }
+}
+
+fn setup_from_directory(src: &std::path::Path, dst: &std::path::Path) -> Result<(), String> {
+    let parent = dst.parent().expect("toolchains directory has parent");
+    let old_dir = if dst.symlink_metadata().is_ok() {
+        let old = tempfile::Builder::new()
+            .prefix("setup-old-")
+            .tempdir_in(parent)
+            .map_err(|e| format!("Failed to create temp dir for old target: {e}"))?;
+        let target_old = old.path().join("old");
+        std::fs::rename(dst, &target_old)
+            .map_err(|e| format!("Failed to rename existing target: {e}"))?;
+        Some(old)
+    } else {
+        None
+    };
+
+    link_or_copy_dir(src, dst)
+        .map_err(|e| format!("Failed to link or copy local directory: {e}"))?;
+
+    drop(old_dir);
+    Ok(())
+}
+
+fn setup_inner(
+    src: Source,
+    toolchain_dir: std::path::PathBuf,
+    expected_hash: [u8; 32],
+    fetcher: impl FnOnce(&str) -> Result<Box<dyn std::io::Read>, String>,
+) -> Result<(), String> {
     let expected_hex = encode_hex(&expected_hash);
     let subdir_name = &expected_hex[..6];
     let target_dir = toolchain_dir.join(subdir_name);
 
     use Source::*;
     match src {
-        LocalTarZst(path) => {
-            log::warn!("Toolchain contents from local archive may not match expected toolchain hash/version number.");
-            let file = std::fs::File::open(path).map_err(|e| format!("Failed to open local archive: {e}"))?;
-            setup_from_tar_zst(file, &target_dir).map_err(|e| format!("Failed to extract archive: {e}"))?;
+        LocalArchive(path, format) => {
+            log::warn!(
+                "Toolchain contents from local archive may not match expected toolchain hash/version number."
+            );
+            let extractor = format.new_extractor();
+            let file = std::fs::File::open(path)
+                .map_err(|e| format!("Failed to open local archive: {e}"))?;
+            setup_from_archive(file, &target_dir, &extractor)
+                .map_err(|e| format!("Failed to extract archive: {e}"))?;
         }
         LocalDirectory(path) => {
-            log::warn!("Toolchain contents from local directory may not match expected toolchain hash/version number.");
-            #[cfg(unix)]
-            {
-                let old_dir = if target_dir.symlink_metadata().is_ok() {
-                    let parent = target_dir.parent().unwrap();
-                    let old = tempfile::Builder::new()
-                        .prefix("setup-old-")
-                        .tempdir_in(parent)
-                        .map_err(|e| format!("Failed to create temp dir for old target: {e}"))?;
-                    let target_old = old.path().join("old");
-                    std::fs::rename(&target_dir, &target_old)
-                        .map_err(|e| format!("Failed to rename existing target: {e}"))?;
-                    Some(old)
-                } else {
-                    None
-                };
-
-                std::os::unix::fs::symlink(&path, &target_dir)
-                    .map_err(|e| format!("Failed to symlink local directory: {e}"))?;
-
-                drop(old_dir);
-            }
-            #[cfg(not(unix))]
-            {
-                return Err("Symlinking is only supported on Unix platforms".to_string());
-            }
+            log::warn!(
+                "Toolchain contents from local directory may not match expected toolchain hash/version number."
+            );
+            setup_from_directory(&path, &target_dir)?;
         }
-        Remote => {
-            let response = reqwest::blocking::get(&platform.remote_url())
-                .map_err(|e| format!("Failed to download archive: {e}"))?;
-            let response = response.error_for_status()
-                .map_err(|e| format!("HTTP error downloading archive: {e}"))?;
+        Remote(format) => {
+            let extractor = format.new_extractor();
+            let platform = Platform::detect().map_err(|e| format!("Failed to detect platform: {e}"))?;
+            let response = fetcher(&platform.remote_url())?;
 
-            let actual_hash = setup_from_tar_zst(response, &target_dir)
+            let actual_hash: [u8; 32] = setup_from_archive(response, &target_dir, &extractor)
                 .map_err(|e| format!("Failed to extract downloaded archive: {e}"))?;
 
             if actual_hash != expected_hash {
@@ -264,8 +404,199 @@ pub fn setup(src: Source, toolchain_dir: std::path::PathBuf) -> Result<(), Strin
     Ok(())
 }
 
+/// Coordinates the provisioning and verification of the active toolchain dependency environment.
+///
+/// This function processes the incoming dependency source and installs it into a toolchain
+/// directory named according to the source SHA256 hash.
+///
+/// # Caveats
+///
+/// - When `src` is a `Source::Local*` variant, the toolchain will be installed in a directory
+///   named after the _expected_ SHA256 hash associated with the detected platform. This will not
+///   necessarily match the behaviour of the platform's archive and should only be used for local
+///   development of the managed toolchain itself.
+pub fn setup(src: Source, toolchain_dir: std::path::PathBuf) -> Result<(), String> {
+    let platform = Platform::detect().expect("detect platform");
+    let expected_hash = platform.expected_archive_hash();
+    setup_inner(src, toolchain_dir, expected_hash, |url| {
+        let response = reqwest::blocking::get(url)
+            .map_err(|e| format!("Failed to download archive: {e}"))?;
+        let response = response
+            .error_for_status()
+            .map_err(|e| format!("HTTP error downloading archive: {e}"))?;
+        Ok(Box::new(response))
+    })
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn create_test_archive(src_dir: &std::path::Path, archive_path: &std::path::Path) {
+        let status = std::process::Command::new("tar")
+            .arg("--zstd")
+            .arg("-cf")
+            .arg(archive_path)
+            .arg("-C")
+            .arg(src_dir)
+            .arg(".")
+            .status()
+            .expect("Failed to execute tar archive creation");
+        assert!(status.success());
+    }
+
+    fn compute_sha256(path: &std::path::Path) -> [u8; 32] {
+        use sha2::Digest;
+        let mut file = std::fs::File::open(path).unwrap();
+        let mut hasher = sha2::Sha256::new();
+        std::io::copy(&mut file, &mut hasher).unwrap();
+        hasher.finalize().into()
+    }
+
+    #[test]
+    fn test_setup_from_directory() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("file.txt"), "hello").unwrap();
+
+        let dst = temp.path().join("dst");
+        setup_from_directory(&src, &dst).unwrap();
+
+        assert!(dst.join("file.txt").exists());
+        assert_eq!(std::fs::read_to_string(dst.join("file.txt")).unwrap(), "hello");
+
+        // Test atomic replacement by running it again with updated contents
+        let src2 = temp.path().join("src2");
+        std::fs::create_dir(&src2).unwrap();
+        std::fs::write(src2.join("file.txt"), "world").unwrap();
+
+        setup_from_directory(&src2, &dst).unwrap();
+        assert_eq!(std::fs::read_to_string(dst.join("file.txt")).unwrap(), "world");
+    }
+
+    #[test]
+    fn test_setup_from_archive() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("data.txt"), "archive_content").unwrap();
+
+        let archive_path = temp.path().join("test.tar.zst");
+        create_test_archive(&src, &archive_path);
+
+        let dst = temp.path().join("dst");
+        let file = std::fs::File::open(&archive_path).unwrap();
+        let hash = setup_from_archive(file, &dst, &TarZstExtractor).unwrap();
+
+        assert_eq!(hash, compute_sha256(&archive_path));
+        assert_eq!(std::fs::read_to_string(dst.join("data.txt")).unwrap(), "archive_content");
+    }
+
+    #[test]
+    fn test_setup_inner_local_directory() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("test.txt"), "local_dir").unwrap();
+
+        let expected_hash = [1u8; 32];
+        let expected_hex = encode_hex(&expected_hash);
+        let target_dir = temp.path().join(&expected_hex[..6]);
+
+        setup_inner(
+            Source::LocalDirectory(src),
+            temp.path().to_path_buf(),
+            expected_hash,
+            |_| unreachable!(),
+        )
+        .unwrap();
+
+        assert_eq!(std::fs::read_to_string(target_dir.join("test.txt")).unwrap(), "local_dir");
+    }
+
+    #[test]
+    fn test_setup_inner_local_archive() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("test.txt"), "local_archive").unwrap();
+
+        let archive_path = temp.path().join("archive.tar.zst");
+        create_test_archive(&src, &archive_path);
+
+        let expected_hash = [2u8; 32];
+        let expected_hex = encode_hex(&expected_hash);
+        let target_dir = temp.path().join(&expected_hex[..6]);
+
+        setup_inner(
+            Source::LocalArchive(archive_path, ArchiveFormat::TarZst),
+            temp.path().to_path_buf(),
+            expected_hash,
+            |_| unreachable!(),
+        )
+        .unwrap();
+
+        assert_eq!(std::fs::read_to_string(target_dir.join("test.txt")).unwrap(), "local_archive");
+    }
+
+    #[test]
+    fn test_setup_inner_remote_success() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("test.txt"), "remote_content").unwrap();
+
+        let archive_path = temp.path().join("remote.tar.zst");
+        create_test_archive(&src, &archive_path);
+
+        let actual_hash = compute_sha256(&archive_path);
+        let expected_hex = encode_hex(&actual_hash);
+        let target_dir = temp.path().join(&expected_hex[..6]);
+
+        setup_inner(
+            Source::Remote(ArchiveFormat::TarZst),
+            temp.path().to_path_buf(),
+            actual_hash,
+            move |_url| {
+                let file = std::fs::File::open(&archive_path).unwrap();
+                Ok(Box::new(file))
+            },
+        )
+        .unwrap();
+
+        assert_eq!(std::fs::read_to_string(target_dir.join("test.txt")).unwrap(), "remote_content");
+    }
+
+    #[test]
+    fn test_setup_inner_remote_checksum_mismatch() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("test.txt"), "bad_remote").unwrap();
+
+        let archive_path = temp.path().join("bad_remote.tar.zst");
+        create_test_archive(&src, &archive_path);
+
+        let actual_hash = compute_sha256(&archive_path);
+        let mut expected_hash = actual_hash;
+        expected_hash[0] ^= 1; // invalidate checksum
+
+        let expected_hex = encode_hex(&expected_hash);
+        let target_dir = temp.path().join(&expected_hex[..6]);
+
+        let res = setup_inner(
+            Source::Remote(ArchiveFormat::TarZst),
+            temp.path().to_path_buf(),
+            expected_hash,
+            move |_url| {
+                let file = std::fs::File::open(&archive_path).unwrap();
+                Ok(Box::new(file))
+            },
+        );
+
+        assert!(res.is_err());
+        assert!(res.unwrap_err().contains("Checksum mismatch"));
+        assert!(!target_dir.exists());
+    }
 }
