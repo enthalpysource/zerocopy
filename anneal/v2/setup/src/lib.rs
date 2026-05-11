@@ -134,160 +134,26 @@ pub enum Source {
     Remote(ArchiveFormat),
 }
 
-/// An active destination output stream consuming uncompressed archive file bytes.
-///
-/// Implementations of this trait represent the receiving endpoint of an extraction pipeline,
-/// such as standard library file buffers or spawned decompressor child processes.
-pub trait ArchiveWriter: std::io::Write {
-    /// Completes the extraction sequence, waiting for synchronous background tasks or child
-    /// process execution trees to terminate, and returning final pipeline execution status.
-    ///
-    /// Consuming `self` by value ensures that underlying handles or pipes are explicitly closed
-    /// prior to evaluating final termination statuses, guaranteeing resource safety and preventing
-    /// trailing file-descriptor leaks.
-    fn finish(self: Box<Self>) -> std::io::Result<()>;
-}
-
-/// An abstract extraction factory instantiating output writer pipelines targeting designated
+/// An abstract extraction factory instantiating operational output streams targeting designated
 /// filesystem paths.
 ///
 /// Consuming software can utilize this trait interface to decouple core processing workflows
 /// from concrete decompressor tools, facilitating modular injection of specialized archiving logic
 /// or isolated testing frameworks.
 pub trait Extractor {
-    /// Configures and returns an operational output writer extracting consumed stream data directly
-    /// into the specified target directory.
-    ///
-    /// Returning an object-safe boxed trait handle (`Box<dyn ArchiveWriter>`) avoids infectious
-    /// generic type parameter propagation across calling subcommands while granting ultimate runtime
-    /// flexibility over underlying output implementations.
-    fn extract(&self, dst: &std::path::Path) -> std::io::Result<Box<dyn ArchiveWriter>>;
-}
-
-struct PipeState {
-    buf: Vec<u8>,
-    closed: bool,
-    err: Option<String>,
-}
-
-#[derive(Clone)]
-struct SharedPipe {
-    state: std::sync::Arc<std::sync::Mutex<PipeState>>,
-    cvar: std::sync::Arc<std::sync::Condvar>,
-    cap: usize,
-}
-
-impl SharedPipe {
-    fn new(cap: usize) -> Self {
-        Self {
-            state: std::sync::Arc::new(std::sync::Mutex::new(PipeState {
-                buf: Vec::new(),
-                closed: false,
-                err: None,
-            })),
-            cvar: std::sync::Arc::new(std::sync::Condvar::new()),
-            cap,
-        }
-    }
-}
-
-struct PipeWriter {
-    shared: SharedPipe,
-    join_handle: Option<std::thread::JoinHandle<std::io::Result<()>>>,
-}
-
-impl std::io::Write for PipeWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut state = self.shared.state.lock().unwrap();
-        while state.buf.len() >= self.shared.cap && !state.closed && state.err.is_none() {
-            state = self.shared.cvar.wait(state).unwrap();
-        }
-        if let Some(ref err) = state.err {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, err.clone()));
-        }
-        if state.closed {
-            return Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, "Pipe closed"));
-        }
-        let space = self.shared.cap.saturating_sub(state.buf.len()).max(1);
-        let n = buf.len().min(space);
-        state.buf.extend_from_slice(&buf[..n]);
-        self.shared.cvar.notify_all();
-        Ok(n)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
-impl ArchiveWriter for PipeWriter {
-    fn finish(mut self: Box<Self>) -> std::io::Result<()> {
-        {
-            let mut state = self.shared.state.lock().unwrap();
-            state.closed = true;
-            self.shared.cvar.notify_all();
-        }
-        let handle = self.join_handle.take().unwrap();
-        handle.join().map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Extraction thread panicked"))??;
-        Ok(())
-    }
-}
-
-struct PipeReader {
-    shared: SharedPipe,
-}
-
-impl std::io::Read for PipeReader {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let mut state = self.shared.state.lock().unwrap();
-        while state.buf.is_empty() && !state.closed && state.err.is_none() {
-            state = self.shared.cvar.wait(state).unwrap();
-        }
-        if let Some(ref err) = state.err {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, err.clone()));
-        }
-        if state.buf.is_empty() && state.closed {
-            return Ok(0);
-        }
-        let n = buf.len().min(state.buf.len());
-        let drained: Vec<u8> = state.buf.drain(..n).collect();
-        buf[..n].copy_from_slice(&drained);
-        self.shared.cvar.notify_all();
-        Ok(n)
-    }
+    /// Unpacks stream bytes directly into the specified target directory synchronously on the calling thread.
+    fn extract(&self, src: &mut dyn std::io::Read, dst: &std::path::Path) -> std::io::Result<()>;
 }
 
 /// A concrete [`Extractor`] implementation delegating archive extraction duties entirely in-process
-/// via concurrent multi-threaded streaming pipelines using the `tar` and `zstd` library crates.
+/// via synchronous streaming pipelines using the `tar` and `zstd` library crates.
 pub struct TarZstLibraryExtractor;
 
 impl Extractor for TarZstLibraryExtractor {
-    fn extract(&self, dst: &std::path::Path) -> std::io::Result<Box<dyn ArchiveWriter>> {
-        let shared = SharedPipe::new(65536);
-        let reader = PipeReader { shared: shared.clone() };
-        let dst = dst.to_path_buf();
-        let shared_clone = shared.clone();
-
-        let join_handle = std::thread::spawn(move || {
-            let res = (|| -> std::io::Result<()> {
-                let decoder = zstd::Decoder::new(reader)?;
-                let mut archive = tar::Archive::new(decoder);
-                archive.unpack(&dst)?;
-                Ok(())
-            })();
-
-            if let Err(ref e) = res {
-                let mut state = shared_clone.state.lock().unwrap();
-                state.err = Some(e.to_string());
-                shared_clone.cvar.notify_all();
-            }
-            res
-        });
-
-        Ok(Box::new(PipeWriter {
-            shared,
-            join_handle: Some(join_handle),
-        }))
+    fn extract(&self, src: &mut dyn std::io::Read, dst: &std::path::Path) -> std::io::Result<()> {
+        let decoder = zstd::Decoder::new(src)?;
+        let mut archive = tar::Archive::new(decoder);
+        archive.unpack(dst)
     }
 }
 
@@ -334,10 +200,8 @@ fn setup_from_archive(
     let parent = dst.parent().expect("toolchains directory has parent");
     let temp_dir = tempfile::Builder::new().prefix("setup-").tempdir_in(parent)?;
 
-    let mut archive_writer = extractor.extract(temp_dir.path())?;
     let mut hash_reader = HashReader::new(src);
-    std::io::copy(&mut hash_reader, &mut archive_writer)?;
-    archive_writer.finish()?;
+    extractor.extract(&mut hash_reader, temp_dir.path())?;
 
     // Handle atomic overwrite if dst already occupies the target path
     let old_dir = if dst.symlink_metadata().is_ok() {
