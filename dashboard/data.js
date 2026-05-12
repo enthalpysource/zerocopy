@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778599329806,
+  "lastUpdate": 1778612034998,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3906,6 +3906,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 32,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "c51884e94262f3f9d5dead155f0ef806d424c989",
+          "message": "Add to anneal-setup-v2: non-UNIX support; doc-comments; tests",
+          "timestamp": "2026-05-12T05:19:23Z",
+          "url": "https://github.com/google/zerocopy/pull/3353/commits/c51884e94262f3f9d5dead155f0ef806d424c989"
+        },
+        "date": 1778612032980,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 13,
             "unit": "seconds"
           }
         ]
