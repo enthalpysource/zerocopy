@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778613844011,
+  "lastUpdate": 1778613868298,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6949,6 +6949,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 758,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "421342304f51114aaddd133c638ba199957a3dcc",
+          "message": "anneal-setup-v2: switch from shelling out to tar to managing archives with libraries",
+          "timestamp": "2026-05-12T05:19:23Z",
+          "url": "https://github.com/google/zerocopy/pull/3356/commits/421342304f51114aaddd133c638ba199957a3dcc"
+        },
+        "date": 1778613865900,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 87,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 569,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 739,
             "unit": "seconds"
           }
         ]
