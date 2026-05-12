@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778613128862,
+  "lastUpdate": 1778613141859,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4081,6 +4081,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1100,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "c862a246e91d85f4bca9202b02994ac576825c76",
+          "message": "anneal-setup-v2: Update nix flake to package Lean toolchain",
+          "timestamp": "2026-05-12T05:19:23Z",
+          "url": "https://github.com/google/zerocopy/pull/3359/commits/c862a246e91d85f4bca9202b02994ac576825c76"
+        },
+        "date": 1778613138401,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1113,
             "unit": "seconds"
           }
         ]
