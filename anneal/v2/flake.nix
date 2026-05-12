@@ -17,8 +17,10 @@
     # keeping our configuration clean and DRY.
     flake-utils.lib.eachDefaultSystem (system:
       let
-        # legacyPackages provides the package set for the current target system.
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
 
         # Centralized platform target resolving maps.
         # Maps standard Nix systems (e.g., x86_64-linux) to upstream triple naming.
@@ -93,7 +95,7 @@
 
             buildPhase = ''
               mkdir -p $out
-              
+
               # A local bash helper function to download and extract a nightly
               # component.
               #
@@ -108,16 +110,16 @@
                 local name=$1
                 local url="https://static.rust-lang.org/dist/${rustDate}/''${name}-nightly-${rustPlatform}.tar.gz"
                 echo "Downloading and extracting $name from $url..."
-                
+
                 mkdir -p tmp_extract
                 curl -sSL "$url" | tar -xz -C tmp_extract
-                
+
                 local top_dir=$(ls tmp_extract | head -n 1)
                 # Resolve the component directory path nested inside top_dir
                 # (e.g. 'tmp_extract/rustc-nightly-x86_64-unknown-linux-gnu/rustc')
                 # This perfectly replicates setup.rs double-directory skipping.
                 local comp_dir=$(find "tmp_extract/$top_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-                
+
                 cp -r $comp_dir/* $out/
                 rm -rf tmp_extract
               }
@@ -155,10 +157,10 @@
 
             buildPhase = ''
               mkdir -p $out
-              
+
               url="https://releases.lean-lang.org/lean4/${leanVersion}/lean-${rawVersion}-${leanPlatform}.tar.zst"
               echo "Downloading Lean toolchain from $url..."
-              
+
               # Download and extract the .tar.zst archive directly to $out
               # We strip the first directory component (e.g. 'lean-4.28.0-rc1-linux/')
               # so the inner 'bin/', 'lib/', 'share/' subdirectories sit directly under $out.
@@ -304,7 +306,7 @@ EOF
 
           buildPhase = ''
             export HOME=$TMPDIR
-            
+
             # 1. Reconstruct the synthetic minimal project using narrow configuration files.
             mkdir -p project
             cp $metadataFiles/lakefile.lean project/
@@ -331,8 +333,8 @@ EOF
             #
             # Why: During package resolution, Lake writes `.trace` and `.hash` files.
             # Some of these (like `ProofWidgets` JS asset traces) do not contain compiler
-            # paths and are necessary for offline builds. We surgically delete ONLY 
-            # the `.trace` and `.hash` files that actually contain Nix store paths, 
+            # paths and are necessary for offline builds. We surgically delete ONLY
+            # the `.trace` and `.hash` files that actually contain Nix store paths,
             # preserving all clean package asset traces perfectly.
             find $out/packages -type f \( -name "*.trace" -o -name "*.hash" \) \
               -exec grep -q "/nix/store" {} \; -delete
@@ -340,15 +342,15 @@ EOF
             # 4. Scrub the entire Mathlib build directory.
             #
             # Why: Mathlib compiled object directories are massive. Since we reconstruct
-            # Mathlib's build cache offline in Layer 2 by unpacking clean `.ltar` archives, 
-            # we can safely delete Mathlib's `.lake` folder entirely to save space while 
+            # Mathlib's build cache offline in Layer 2 by unpacking clean `.ltar` archives,
+            # we can safely delete Mathlib's `.lake` folder entirely to save space while
             # preserving the `.lake/` folder (and precompiled JS assets) for other packages.
             rm -rf $out/packages/mathlib/.lake
 
             # 5. Git Scrubbing recursively to guarantee 100% deterministic bit-identity
             #
-            # FIXME: It may later turn out that we need to preserve `.git`; if this is the case, 
-            # we may want to explore mocking the system time (e.g., via libfaketime) to make `.git`'s 
+            # FIXME: It may later turn out that we need to preserve `.git`; if this is the case,
+            # we may want to explore mocking the system time (e.g., via libfaketime) to make `.git`'s
             # contents deterministic.
             find $out/packages -type d -name ".git" -exec rm -rf {} +
           '';
@@ -432,7 +434,7 @@ EOF
           buildPhase = ''
             export HOME=$TMPDIR
             export PATH="$leanToolchain/bin:$PATH"
-            
+
             # Prepend the Lean toolchain library directories to LD_LIBRARY_PATH.
             #
             # Why: The Lean compiler binaries are dynamically linked to the Lean
@@ -448,12 +450,12 @@ EOF
             # would crash the build. Setting this variable to "1" bypasses the
             # hook cleanly.
             export MATHLIB_NO_CACHE_ON_UPDATE=1
-            
+
             # 1. Copy Aeneas Lean project source code
             cp -r $aeneasUnpacked/backends/lean lean
             chmod -R +w lean
             cd lean
-            
+
             # 2. Populate Mathlib package cache
             mkdir -p $TMPDIR/packages
             cp -r $mathlibCache/packages/* $TMPDIR/packages/
@@ -468,7 +470,7 @@ EOF
             mkdir -p .lake
             cp -r $mathlibCache/.lake/build .lake/
             chmod -R +w .lake
-            
+
             # 3. Execute inline Python script to recursively rewrite all manifests
             # and lakefiles to use local path dependencies. This allows Lake to resolve
             # all checkouts offline from local directories directly, bypassing all Git
@@ -492,7 +494,7 @@ def rewrite_manifest(manifest_path):
     print(f"Rewriting manifest: {manifest_path}")
     with open(manifest_path, 'r') as f:
         json_data = json.load(f)
-    
+
     if "packages" in json_data:
         new_packages = []
         for pkg in json_data["packages"]:
@@ -505,7 +507,7 @@ def rewrite_manifest(manifest_path):
             }
             new_packages.append(new_pkg)
         json_data["packages"] = new_packages
-        
+
     with open(manifest_path, 'w') as f:
         json.dump(json_data, f, indent=2)
 
@@ -572,14 +574,14 @@ EOF
             # - `packages/` containing the local packages checkouts.
             mkdir -p $out/backends/lean
             cp -r . $out/backends/lean/
-            
+
             mkdir -p $out/packages
             cp -r $TMPDIR/packages/* $out/packages/
           '';
         };
 
         # Exposes a standard derivation that stages Aeneas compiled output and the
-        # Rust sysroot compiler together. It clears all Nix store dynamic linker and
+        # Rust and Lean sysroot compilers together. It clears all Nix store dynamic linker and
         # library references from the binaries, and patches compiled trace files
         # with a stable relocatable placeholder string.
         packages.omnibus-tar = pkgs.stdenv.mkDerivation {
@@ -594,15 +596,23 @@ EOF
             gnutar
           ];
 
-          leanBuild = self.packages.${system}.aeneas-compiled;
+          aeneasBuild = self.packages.${system}.aeneas-compiled;
           rustToolchain = self.packages.${system}.rust-toolchain;
+          leanToolchain = self.packages.${system}.lean-toolchain;
 
           buildPhase = ''
             # 1. Recreate the staging directory layout
             mkdir -p $TMPDIR/dist_staging
-            cp -r $leanBuild/* $TMPDIR/dist_staging/
-            cp -r $rustToolchain/* $TMPDIR/dist_staging/
-            chmod -R +w $TMPDIR/dist_staging
+            chmod -R +w $TMPDIR/dist_staging/
+            mkdir -p $TMPDIR/dist_staging/lean
+            cp -r $leanToolchain/* $TMPDIR/dist_staging/lean/
+            chmod -R +w $TMPDIR/dist_staging/lean
+            mkdir -p $TMPDIR/dist_staging/rust
+            cp -r $rustToolchain/* $TMPDIR/dist_staging/rust/
+            chmod -R +w $TMPDIR/dist_staging/rust
+            mkdir -p $TMPDIR/dist_staging/aeneas
+            cp -r $aeneasBuild/* $TMPDIR/dist_staging/aeneas/
+            chmod -R +w $TMPDIR/dist_staging/aeneas
 
             # 2. Un-Nixify staging binaries recursively to make them relocatable.
             #
@@ -673,7 +683,7 @@ EOF
             # Read the overrideable zstd compression level
             ZSTD_LEVEL=''${ANNEAL_ZSTD_LEVEL:-1}
             echo "Compressing with Zstd level $ZSTD_LEVEL..."
-            
+
             # Compress the uncompressed tar file directly to the output path $out
             zstd -$ZSTD_LEVEL $omnibusTar -o $out
           '';
@@ -713,7 +723,7 @@ EOF
         # feeding the parsed date into both `fetchRustToolchain` AND
         # `fetchLeanToolchain` downloader helpers on the fly, with absolutely
         # zero hardcoded values.
-        packages.test-ifd = 
+        packages.test-ifd =
           let
             # 1. Reference our unpacked derivation
             unpacked = self.packages.${system}.aeneas-unpacked;
@@ -743,12 +753,12 @@ EOF
             echo "Extracted Rust Toolchain Version: ${rustVersion}"
             echo "Dynamically Constructed Rust Toolchain Store Path: ${dynamicRust}"
             echo "Dynamically Constructed Lean Toolchain Store Path: ${dynamicLean}"
-            
+
             # Verify the dynamic compiler binaries actually exist
             # (Cannot execute them directly due to dynamic interpreter sandbox paths)
             test -f ${dynamicRust}/bin/rustc
             test -f ${dynamicLean}/bin/lean
-            
+
             # Write output file
             echo "Lean: ${leanVersion}, Rust: ${rustVersion}" > $out
             echo "Wired Rust Toolchain: ${dynamicRust}" >> $out
