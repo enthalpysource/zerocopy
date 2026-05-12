@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778613754843,
+  "lastUpdate": 1778613844011,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6914,6 +6914,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 700,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "03f497ea94807c49fc43043f0d46a05922789746",
+          "message": "Modify anneal/Cargo to admit v2/setup workspace",
+          "timestamp": "2026-05-12T05:19:23Z",
+          "url": "https://github.com/google/zerocopy/pull/3354/commits/03f497ea94807c49fc43043f0d46a05922789746"
+        },
+        "date": 1778613841761,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 91,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 584,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 758,
             "unit": "seconds"
           }
         ]
