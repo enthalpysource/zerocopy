@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778612034998,
+  "lastUpdate": 1778612040499,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3931,6 +3931,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 13,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "7127a9536f05a3f486ef39f21f3dcfaf5fdd2d14",
+          "message": "WIP: Start building thin setup that presumes carefully prepared dependencies archive",
+          "timestamp": "2026-05-12T05:19:23Z",
+          "url": "https://github.com/google/zerocopy/pull/3352/commits/7127a9536f05a3f486ef39f21f3dcfaf5fdd2d14"
+        },
+        "date": 1778612037533,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 14,
             "unit": "seconds"
           }
         ]
