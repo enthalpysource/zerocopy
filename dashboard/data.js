@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778613097558,
+  "lastUpdate": 1778613125151,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4031,6 +4031,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1066,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "5b0642ee112a48b0554a58e5a820b24bbdf70a9d",
+          "message": "anneal-setup-v2: update vendored rust dependencies",
+          "timestamp": "2026-05-12T05:19:23Z",
+          "url": "https://github.com/google/zerocopy/pull/3355/commits/5b0642ee112a48b0554a58e5a820b24bbdf70a9d"
+        },
+        "date": 1778613122114,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1094,
             "unit": "seconds"
           }
         ]
