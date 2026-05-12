@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778612980678,
+  "lastUpdate": 1778613024772,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -3956,6 +3956,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 14,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "5592b2be1f587b882462913c632dfa9ee6c01ab9",
+          "message": "anneal-setup-v2: simplify extractor into single-threaded implementation",
+          "timestamp": "2026-05-12T05:19:23Z",
+          "url": "https://github.com/google/zerocopy/pull/3357/commits/5592b2be1f587b882462913c632dfa9ee6c01ab9"
+        },
+        "date": 1778613022288,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1006,
             "unit": "seconds"
           }
         ]
