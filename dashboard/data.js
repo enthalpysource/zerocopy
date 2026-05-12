@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778613049341,
+  "lastUpdate": 1778613097558,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4006,6 +4006,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1030,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "421342304f51114aaddd133c638ba199957a3dcc",
+          "message": "anneal-setup-v2: switch from shelling out to tar to managing archives with libraries",
+          "timestamp": "2026-05-12T05:19:23Z",
+          "url": "https://github.com/google/zerocopy/pull/3356/commits/421342304f51114aaddd133c638ba199957a3dcc"
+        },
+        "date": 1778613094479,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1066,
             "unit": "seconds"
           }
         ]
