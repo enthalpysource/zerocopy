@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778677436961,
+  "lastUpdate": 1778702960552,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4181,6 +4181,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1081,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "8d67b0302edbe4dd818d3603d0430ca33b2f648e",
+          "message": "[WIP] Experiment rewriting setup in toolchain-config directory",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3363/commits/8d67b0302edbe4dd818d3603d0430ca33b2f648e"
+        },
+        "date": 1778702957330,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1007,
             "unit": "seconds"
           }
         ]
