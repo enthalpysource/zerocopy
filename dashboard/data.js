@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778786594130,
+  "lastUpdate": 1778786609173,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4283,6 +4283,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1017,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "82b260af1624870a6cc8087c00506015fd94d4d8",
+          "message": "Move from type params to &dyn T; start trying to work with toml_const",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3373/commits/82b260af1624870a6cc8087c00506015fd94d4d8"
+        },
+        "date": 1778786605766,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1029,
             "unit": "seconds"
           }
         ]
