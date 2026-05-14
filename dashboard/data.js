@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778709529147,
+  "lastUpdate": 1778744524801,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4231,6 +4231,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 12,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "422235dad9be97a1f2cb5106da6fb44f5f303a49",
+          "message": "Only use `layout_for_ptr` feature for zerocopy tests (#3365)\n\nThis puts the use of the unstable feature `layout_for_ptr` behind\n`all(test, miri)`, since it is only necessary for zerocopy tests, not\nfor downstream users.\n\nRelease 0.8.49.\n\ngherrit-pr-id: Gouy5nmgied3joawzp6mdecm3nuhi35jh\n\nCo-authored-by: Erick Tryzelaar <etryzelaar@google.com>",
+          "timestamp": "2026-05-14T07:41:16Z",
+          "url": "https://github.com/google/zerocopy/commit/422235dad9be97a1f2cb5106da6fb44f5f303a49"
+        },
+        "date": 1778744522902,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 10,
             "unit": "seconds"
           }
         ]
