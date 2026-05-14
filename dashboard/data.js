@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778787353899,
+  "lastUpdate": 1778787512683,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -7591,6 +7591,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 717,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "f89f0b43d3004c662f702b1f82fabf2306c13a9f",
+          "message": "Introduce toml_const dependency; r/Setup/Install; bind url<->archive-format and checksum<->digest-algorithm",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3372/commits/f89f0b43d3004c662f702b1f82fabf2306c13a9f"
+        },
+        "date": 1778787509725,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 116,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 562,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 764,
             "unit": "seconds"
           }
         ]
