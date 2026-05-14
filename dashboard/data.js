@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778786756812,
+  "lastUpdate": 1778787336105,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -7521,6 +7521,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 726,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "05d57bc60c4fd3ce1734574632a1bc97a459322d",
+          "message": "Start cleaning up vibe-coded 'Rename v2..Introduce standalone' changes",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3371/commits/05d57bc60c4fd3ce1734574632a1bc97a459322d"
+        },
+        "date": 1778787333735,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 86,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 550,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 715,
             "unit": "seconds"
           }
         ]
