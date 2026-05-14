@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778786623745,
+  "lastUpdate": 1778786671857,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4333,6 +4333,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1044,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "05dd9ae24f6824827c817414ce7fdc9e19fdff99",
+          "message": "Introduce standalone static-toml integration example and robust parent directory creation interfaces",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3370/commits/05dd9ae24f6824827c817414ce7fdc9e19fdff99"
+        },
+        "date": 1778786669203,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1094,
             "unit": "seconds"
           }
         ]
