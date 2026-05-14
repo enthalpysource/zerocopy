@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778786686355,
+  "lastUpdate": 1778786706026,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4383,6 +4383,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1111,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "f89f0b43d3004c662f702b1f82fabf2306c13a9f",
+          "message": "Introduce toml_const dependency; r/Setup/Install; bind url<->archive-format and checksum<->digest-algorithm",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3372/commits/f89f0b43d3004c662f702b1f82fabf2306c13a9f"
+        },
+        "date": 1778786702500,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1110,
             "unit": "seconds"
           }
         ]
