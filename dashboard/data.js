@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778786671857,
+  "lastUpdate": 1778786686355,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4358,6 +4358,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1094,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "0106dd73bfa19b2c73aa436e8bab3240f237aaf3",
+          "message": "Refactor Config layout and rework platform binding parameters",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3368/commits/0106dd73bfa19b2c73aa436e8bab3240f237aaf3"
+        },
+        "date": 1778786683631,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1111,
             "unit": "seconds"
           }
         ]
