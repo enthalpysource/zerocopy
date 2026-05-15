@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778787512683,
+  "lastUpdate": 1778803615593,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4433,6 +4433,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1180,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "1cb115367ed399840c08dfd4a75fa6b9016d15bf",
+          "message": "[anneal][v2] (Buggy) atomic toolchain management",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3375/commits/1cb115367ed399840c08dfd4a75fa6b9016d15bf"
+        },
+        "date": 1778803612920,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 13,
             "unit": "seconds"
           }
         ]
