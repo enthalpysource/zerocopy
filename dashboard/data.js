@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778886659012,
+  "lastUpdate": 1778887118927,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -8486,6 +8486,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 716,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "19f13f31f97fddf47aada2426645b707d2a052e2",
+          "message": "[anneal][v2][exocrate] Pass manifest/lockfile paths explicitly",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3378/commits/19f13f31f97fddf47aada2426645b707d2a052e2"
+        },
+        "date": 1778887110398,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 165,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 783,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 1045,
             "unit": "seconds"
           }
         ]
