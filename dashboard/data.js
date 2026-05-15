@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778806018539,
+  "lastUpdate": 1778806914653,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -7711,6 +7711,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 596,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "b9bf484e83a8c2000c5eafd07d6561464caccbeb",
+          "message": "[anneal][v2] Atomic toolchain management via directory locking",
+          "timestamp": "2026-05-13T06:01:31Z",
+          "url": "https://github.com/google/zerocopy/pull/3376/commits/b9bf484e83a8c2000c5eafd07d6561464caccbeb"
+        },
+        "date": 1778806910399,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 155,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 677,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 871,
             "unit": "seconds"
           }
         ]
