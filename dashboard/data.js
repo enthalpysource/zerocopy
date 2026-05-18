@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779133892782,
+  "lastUpdate": 1779135712234,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4933,6 +4933,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a3ad195abf85896be6f07f11acb486ceb7d61900",
+          "message": "[anneal] README: Explain philosophy w.r.t. typing (#3351)\n\nRelease 0.1.0-alpha.23.\n\ngherrit-pr-id: Gpeqma2krsi7flwaeyjlum23s7znxuhms",
+          "timestamp": "2026-05-18T16:03:33-04:00",
+          "tree_id": "42557b2a78eba0ec7aaa24b045a0f4e098ac18eb",
+          "url": "https://github.com/google/zerocopy/commit/a3ad195abf85896be6f07f11acb486ceb7d61900"
+        },
+        "date": 1779135709020,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1069,
             "unit": "seconds"
           }
         ]
