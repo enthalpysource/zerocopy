@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779133127355,
+  "lastUpdate": 1779133892782,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -8581,6 +8581,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 839,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "b8afd4850b94fe690b7bdb3f3e2c717e19fb99ab",
+          "message": "[anneal] README: Explain philosophy w.r.t. typing",
+          "timestamp": "2026-05-18T16:47:14Z",
+          "url": "https://github.com/google/zerocopy/pull/3351/commits/b8afd4850b94fe690b7bdb3f3e2c717e19fb99ab"
+        },
+        "date": 1779133888488,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 90,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 558,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 734,
             "unit": "seconds"
           }
         ]
