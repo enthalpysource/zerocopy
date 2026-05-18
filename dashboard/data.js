@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778887524870,
+  "lastUpdate": 1779133127355,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -4908,6 +4908,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 9,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "b8afd4850b94fe690b7bdb3f3e2c717e19fb99ab",
+          "message": "[anneal] README: Explain philosophy w.r.t. typing",
+          "timestamp": "2026-05-18T16:47:14Z",
+          "url": "https://github.com/google/zerocopy/pull/3351/commits/b8afd4850b94fe690b7bdb3f3e2c717e19fb99ab"
+        },
+        "date": 1779133125217,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 7,
             "unit": "seconds"
           }
         ]
