@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779234458055,
+  "lastUpdate": 1779235038173,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -9618,6 +9618,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 720,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "34e3c2d72feeba99b4c2e640971fb641184ea3f0",
+          "message": "[anneal][v2] Independently vendor and patch toml_const",
+          "timestamp": "2026-05-19T20:28:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3381/commits/34e3c2d72feeba99b4c2e640971fb641184ea3f0"
+        },
+        "date": 1779235034352,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 86,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 548,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 714,
             "unit": "seconds"
           }
         ]
