@@ -1,0 +1,21 @@
+[package]
+name = "sha2-const"
+version = "0.1.3"
+authors = ["Saleem Rashid <dev@saleemrashid.com>"]
+edition = "2024"
+rust-version = "1.88.0"
+description = "const fn implementation of the SHA-2 family of hash functions"
+documentation = "https://docs.rs/sha2-const"
+readme = "README.md"
+homepage = "https://github.com/saleemrashid/sha2-const"
+repository = "https://github.com/saleemrashid/sha2-const"
+license = "MIT OR Apache-2.0"
+keywords = ["crypto"]
+categories = ["cryptography", "no-std"]
+
+[dependencies]
+
+[dev-dependencies]
+hex = "0.4.3"
+proptest = "1.11.0"
+sha2 = "0.11.0"
