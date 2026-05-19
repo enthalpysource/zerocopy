@@ -638,9 +638,8 @@ dependencies = [
 
 [[package]]
 name = "toml_const"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60a93119c23cd286a0e585f25bffcd1c292eaa6b90edfd8d58c442a3d2fe57c1"
+version = "1.2.2-alpha"
+source = "git+https://github.com/mdittmer/toml_const?branch=replace-chars-for-rust-cfg#7d38987ba16e9f8ec84cc19170ed02e358b88a7f"
 dependencies = [
  "phf",
  "toml",
@@ -649,9 +648,8 @@ dependencies = [
 
 [[package]]
 name = "toml_const_macros"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0ca608371311e568b6f918f3cf851640c6811625f39852c188b50ce11e2201b"
+version = "1.2.2-alpha"
+source = "git+https://github.com/mdittmer/toml_const?branch=replace-chars-for-rust-cfg#7d38987ba16e9f8ec84cc19170ed02e358b88a7f"
 dependencies = [
  "indexmap",
  "proc-macro2",
