@@ -1,0 +1,13 @@
+[env]
+__ANNEAL_LOCAL_DEV = "1"
+
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/mdittmer/toml_const?branch=replace-chars-for-rust-cfg"]
+git = "https://github.com/mdittmer/toml_const"
+branch = "replace-chars-for-rust-cfg"
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"
