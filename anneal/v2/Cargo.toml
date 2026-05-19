@@ -1,6 +1,10 @@
 [workspace]
 members = [".", "exocrate"]
 
+[features]
+# Factors out tests that assume a prebuilt exocrate unless feature is explicitly enabled.
+exocrate_tests = []
+
 [package]
 name = "cargo-anneal"
 edition = "2024"
@@ -41,6 +45,9 @@ url = "https://example.com/macos-aarch64.tar.zst"
 exocrate = { path = "./exocrate" }
 # FIXME: Update version number if forked change gets merged.
 toml_const = "1.2.2-alpha"
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11"
+log = "0.4"
 
 # FIXME: Drop patch if forked change gets merged.
 [patch.crates-io]
