@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779234295648,
+  "lastUpdate": 1779234458055,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -5440,6 +5440,33 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3381/commits/34e3c2d72feeba99b4c2e640971fb641184ea3f0"
         },
         "date": 1779234290507,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 8,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "8772fc4b3c36778c5cdb4adc7eaa8825541b2418",
+          "message": "[ci] Don't run on large runners (#3379)",
+          "timestamp": "2026-05-19T23:46:42Z",
+          "url": "https://github.com/google/zerocopy/commit/8772fc4b3c36778c5cdb4adc7eaa8825541b2418"
+        },
+        "date": 1779234454954,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
