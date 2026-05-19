@@ -1,6 +1,10 @@
 [workspace]
 members = [".", "exocrate"]
 
+[features]
+# Enables tests that assume a prebuilt exocrate archive.
+exocrate_tests = []
+
 [package]
 name = "cargo-anneal"
 edition = "2024"
@@ -40,3 +44,6 @@ url = "https://example.com/macos-aarch64.tar.zst"
 [dependencies]
 exocrate = { path = "./exocrate" }
 toml_const = "1.3.0"
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11"
+log = "0.4"
