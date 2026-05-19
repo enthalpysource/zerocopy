@@ -39,4 +39,9 @@ url = "https://example.com/macos-aarch64.tar.zst"
 
 [dependencies]
 exocrate = { path = "./exocrate" }
-toml_const = "1.2.1"
+# FIXME: Update version number if forked change gets merged.
+toml_const = "1.2.2-alpha"
+
+# FIXME: Drop patch if forked change gets merged.
+[patch.crates-io]
+toml_const = { git = "https://github.com/mdittmer/toml_const", branch = "replace-chars-for-rust-cfg" }
