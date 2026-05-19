@@ -18,3 +18,4 @@ lcov.info
 !vendor/**
 !tools/vendor/**
 !hermes/vendor/**
+!**/vendor/**/target/
