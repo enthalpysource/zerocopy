@@ -274,7 +274,7 @@ jobs:
           duration=$((end - start))
           echo "Docker Pull Time: $duration seconds"
           echo "[{\"name\": \"Docker Pull Time\", \"unit\": \"seconds\", \"value\": $duration}]" > pull_time.json
-          
+
           docker tag ghcr.io/google/zerocopy/anneal:${STEPS_DOCKER_TAG_OUTPUTS_TAG} anneal-ci:local
         env:
           STEPS_DOCKER_TAG_OUTPUTS_TAG: ${{ steps.docker_tag.outputs.tag }}
@@ -455,6 +455,60 @@ jobs:
             fi
           fi
 
+  v2_nix_cache:
+    name: Warm Nix Cache for V2
+    runs-on: ubuntu-latest
+    needs: build_docker_env
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@441b9e401ac050c38a07d8313748c5c2d17e8aff # v3.6.1
+
+      - name: Run Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main # zizmor: ignore[unpinned-uses]
+
+      - name: Warm Nix Cache
+        run: nix build .#omnibus-archive
+        working-directory: anneal/v2
+
+  v2:
+    name: Run V2 tests
+    runs-on: ubuntu-latest
+    needs: [build_docker_env, v2_nix_cache]
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@441b9e401ac050c38a07d8313748c5c2d17e8aff # v3.6.1
+
+      - name: Run Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main # zizmor: ignore[unpinned-uses]
+
+      - name: Build outside-cargo dependencies (cached)
+        run: |
+          mkdir -p target
+          nix build .#omnibus-archive --out-link target/anneal-exocrate.tar.zst
+        working-directory: anneal/v2
+
+      - name: Install latest nightly Rust
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # zizmor: ignore[superfluous-actions]
+        with:
+          toolchain: nightly
+
+      - name: Run V2 tests
+        run: cargo test --workspace --features exocrate_tests # include tests that assume exocrate prebuilt
+        working-directory: anneal/v2
 
   # Used to signal to branch protections that all other jobs have succeeded.
   all-jobs-succeed:
@@ -469,7 +523,7 @@ jobs:
       # https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks#handling-skipped-but-required-checks
       if: failure()
       runs-on: ubuntu-latest
-      needs: [build_docker_env, anneal_tests, verify_examples, measure_image_size]
+      needs: [build_docker_env, anneal_tests, verify_examples, measure_image_size, v2]
       steps:
         - name: Mark the job as failed
           run: exit 1
