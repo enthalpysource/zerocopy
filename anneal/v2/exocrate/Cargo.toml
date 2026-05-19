@@ -11,7 +11,8 @@ sha2 = "0.11.0"
 sha2-const = "0.1.3"
 tar = "0.4.45"
 tempfile = "3.27.0"
-toml_const = "1.2.1"
+# FIXME: Update version number if forked change gets merged.
+toml_const = "1.2.2-alpha"
 ureq = "3.3.0"
 zstd = "0.13.3"
 
@@ -20,3 +21,28 @@ libc = "0.2"
 
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.52", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_IO"] }
+
+#
+# The following is a canned configuration that can serve as an example. The purpose of including it
+# here is to allow doc tests that illustrate how to use this crate to run to completion.
+#
+
+[package.metadata.exocrate.linux.x86_64]
+# FIXME: Replace `sha256` with actual linux-x86_64.tar.zst checksum.
+sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+url = "https://example.com/linux-x86_64.tar.zst"
+
+[package.metadata.exocrate.macos.x86_64]
+# FIXME: Replace `sha256` with actual macos-x86_64.tar.zst checksum.
+sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+url = "https://example.com/macos-x86_64.tar.zst"
+
+[package.metadata.exocrate.linux.aarch64]
+# FIXME: Replace `sha256` with actual linux-aarch64.tar.zst checksum.
+sha256 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+url = "https://example.com/linux-aarch64.tar.zst"
+
+[package.metadata.exocrate.macos.aarch64]
+# FIXME: Replace `sha256` with actual macos-aarch64.tar.zst checksum.
+sha256 = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+url = "https://example.com/macos-aarch64.tar.zst"
