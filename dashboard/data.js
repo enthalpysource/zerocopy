@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779210996219,
+  "lastUpdate": 1779211165035,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -5120,6 +5120,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 13,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "e4463478772bf064fe0d401f60d41c31bf269d63",
+          "message": "[anneal][v2][exocrate] Crate-level documentation",
+          "timestamp": "2026-05-19T10:50:50Z",
+          "url": "https://github.com/google/zerocopy/pull/3382/commits/e4463478772bf064fe0d401f60d41c31bf269d63"
+        },
+        "date": 1779211161490,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1080,
             "unit": "seconds"
           }
         ]
