@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779213374890,
+  "lastUpdate": 1779213391787,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -9276,6 +9276,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 694,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "41bb90ed3ad4664afd5d98a04047782b9e720f44",
+          "message": "[anneal][v2][exocrate] Crate-level documentation",
+          "timestamp": "2026-05-19T17:39:49Z",
+          "url": "https://github.com/google/zerocopy/pull/3382/commits/41bb90ed3ad4664afd5d98a04047782b9e720f44"
+        },
+        "date": 1779213388264,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 90,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 548,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 721,
             "unit": "seconds"
           }
         ]
