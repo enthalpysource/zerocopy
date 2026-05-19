@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779212323749,
+  "lastUpdate": 1779212325875,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -5195,6 +5195,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 8,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "445857068ada89c3e3a0e5fc64deca4a627e6647",
+          "message": "[anneal][v2] Independently vendor and patch toml_const",
+          "timestamp": "2026-05-19T10:50:50Z",
+          "url": "https://github.com/google/zerocopy/pull/3381/commits/445857068ada89c3e3a0e5fc64deca4a627e6647"
+        },
+        "date": 1779212321796,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 7,
             "unit": "seconds"
           }
         ]
