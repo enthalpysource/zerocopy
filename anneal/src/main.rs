@@ -14,7 +14,7 @@ mod util;
 
 use clap::Parser;
 
-/// Anneal: A Literate Verification Toolchain
+/// Anneal
 #[derive(Parser, Debug)]
 #[command(name = "cargo-anneal", version, about, long_about = None)]
 struct Cli {
