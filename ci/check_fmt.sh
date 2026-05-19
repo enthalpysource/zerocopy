@@ -28,6 +28,7 @@ find . -iname '*.rs' -type f       \
 find ./anneal -iname '*.rs' -type f        \
     -not -path './anneal/target/*'         \
     -not -path './anneal/vendor/*'         \
+    -not -path './anneal/v2/vendor/*'      \
     -not -path './anneal/tests/fixtures/*' \
     -not -path './anneal/tests/ui/*'       \
     -print0 | xargs -0 --no-run-if-empty ./cargo.sh +nightly fmt $FMT_FLAGS --manifest-path anneal/Cargo.toml -- >&2
