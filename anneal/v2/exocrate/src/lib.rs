@@ -10,7 +10,144 @@
 //! Exocrate: An exoskeleton for your crate.
 //!
 //! Exocrate is a manager for crate dependencies which are not managed by Cargo
-//! itself. This might include external toolchains, large binary files, etc.
+//! itself such as external toolchains, large binary files, etc.
+//!
+//! Exocrate *assumes*:
+//!
+//! - An external mechanism that packages external dependencies into a single archive.
+//!
+//! Exocrate *supports*:
+//!
+//! - Remote archives loaded by URL and verified by checksum;
+//! - Local archives designated by file path.
+//!
+//! Exocrate *provides* mechanisms to:
+//!
+//! - Install external dependencies:
+//!   - Download and extract an archive;
+//!   - Fix up archive artifacts that depend on the installed environment (e.g., rewriting absolute
+//!     paths in dependency files);
+//!   - Install archive contents in a versioned filesystem location.
+//! - Access extracted external dependencies:
+//!   - Resolve current installation location.
+//!
+//! # How exocrate installations are versioned
+//!
+//! ## Platform + versioned files list
+//!
+//! The simplest way to auto-version your installations is using macros that tie your installation
+//! platform (i.e., `std::env::consts::OS` and `std::env::consts::ARCH` values) and versioning
+//! files that will change anytime your external dependencies might. Here is an example of
+//! realizing this versioning strategy using the macros exported by `exocrate`:
+//!
+//! ```rust
+//! exocrate::config! {
+//!     const CONFIG: Config = Config {
+//!         // Path components that are joined to establish the base directory for all exocrate
+//!         // installations.
+//!         //
+//!         // For `my-tool` developers: `<my-tool-root>/target/.my-tool/exocrate/<version>`
+//!         // For `my-tool` users: `~/.my-tool/exocrate/<version>`
+//!         rel_dir_path: [".my-tool", "exocrate"],
+//!         // Since the definition of platform-specific exocrate releases for `my-tool` will be
+//!         // specified in its `Cargo.toml` file (see below), we use `Cargo.toml` and `Cargo.lock`
+//!         //  as a "change detector" to change the version.
+//!         //
+//!         // This is an over-approximation: unrelated changes to `Cargo.toml` or `Cargo.lock`
+//!         // (e.g., patch-level version bumps of cargo-managed dependencies, changes in listed
+//!         // crate dependencies, shipping an exocrate release for some other platform, etc.) will
+//!         // also change the exocrate version. This is generally not a problem because only
+//!         // developers of `my-tool` itself need to deal with noisy exocrate version changes;
+//!         // users will only install versions associated with less frequent releases of
+//!         // `my-tool`, e.g., installed via `cargo install my-tool`.
+//!         versioned_files: &["../Cargo.toml", "../Cargo.lock"],
+//!     };
+//! }
+//!
+//! exocrate::parse_remote_archive! {
+//!     const REMOTE: RemoteArchive = "Cargo.toml" [
+//!         // `(std::env::consts::OS, std::env::consts::ARCH)` pairs you support.
+//!         (linux, x86_64),
+//!         (macos, x86_64),
+//!         (linux, aarch64),
+//!         (macos, aarch64),
+//!     ];
+//! }
+//!
+//! // FIXME: Detect whether running in tool-installed or tool-development environment. The typical
+//! // pattern would be:
+//! // - tool-installed => use `exocrate::Location::UserGlobal`,
+//! // - tool-development => use `exocrate::Location::LocalDev`.
+//! let location: exocrate::Location = exocrate::Location::LocalDev;
+//!
+//! // FIXME: Use environment detection here too. The typical pattern would be:
+//! // - tool-installed => use `exocrate::Source::Remote(REMOTE)`,
+//! // - tool-development => use
+//! //       `exocrate::Source::Local("/path/to/dep-archive-builder-output.tar.zst".into())`.
+//! let source: exocrate::Source = exocrate::Source::Local("tests/my-tool-deps.tar.zst".into());
+//!
+//! // Check whether `source` archive is already installed at `location`, and if not, install it.
+//! let installed_exocrate_dir = CONFIG.resolve_installation_dir_or_install(location, source)
+//!     .expect("failed to resolve or install my-tool's exocrate");
+//!
+//! // Invoke tool installed from `tests/my-tool-deps.tar.zst` extracted to versioned exocrate
+//! // directory.
+//! let tool_status = std::process::Command::new(installed_exocrate_dir.join("bin").join("tool"))
+//!     .status()
+//!     .expect("failed to start external dependency located at `bin/tool`");
+//! assert!(tool_status.success());
+//! ```
+//!
+//! And in your `Cargo.toml`:
+//!
+//! ```toml
+//! #
+//! # Prepares `REMOTE = exocrate::RemoteArchive { sha256, url }` according to compile-time machine
+//! # `std::env::consts::OS . std::env::consts::ARCH` listed as supported in your invocation of
+//! # `exocrate::parse_remote_archive`.
+//! #
+//! [package.metadata.exocrate.linux.x86_64]
+//! # FIXME: Replace `sha256` with actual linux-x86_64.tar.zst checksum.
+//! sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+//! url = "https://example.com/linux-x86_64.tar.zst"
+//!
+//! [package.metadata.exocrate.macos.x86_64]
+//! # FIXME: Replace `sha256` with actual macos-x86_64.tar.zst checksum.
+//! sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+//! url = "https://example.com/macos-x86_64.tar.zst"
+//!
+//! [package.metadata.exocrate.linux.aarch64]
+//! # FIXME: Replace `sha256` with actual linux-aarch64.tar.zst checksum.
+//! sha256 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+//! url = "https://example.com/linux-aarch64.tar.zst"
+//!
+//! [package.metadata.exocrate.macos.aarch64]
+//! # FIXME: Replace `sha256` with actual macos-aarch64.tar.zst checksum.
+//! sha256 = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+//! url = "https://example.com/macos-aarch64.tar.zst"
+//! ```
+//!
+//! ### Limitations
+//!
+//! This versioning strategy does not distinguish between changes to `package.metadata.exocrate` and
+//! other changes to `Cargo.toml`. This can result in proliferation of distinct exocrate versions
+//! that developers need to clear out if your exocrate is particularly large. This cleanup can be
+//! achieved using `cargo clean`.
+//!
+//! ## Custom versioning
+//!
+//! Manually constructing an [`Config`] offers you full control over the base directory (relative
+//! to one or another [`Location`] for installation) and version string that is used to construct
+//! this `Config`'s version of the exocrate. By using this pattern, you takeresponsbility for
+//! determining what version of your exocrate corresponds with the code consuming the `exocrate`
+//! library.
+//!
+//! # Limitations
+//!
+//! Exocrate does not currently support any helpers for cleaning up old versions of your exocrate
+//! installations. All installed versions will be stored somewhere inside the directories designated
+//! by one of the [`Location`] variants, but there are no other guarantees about how these
+//! directory trees are managed at this time.
 
 mod sync;
 
@@ -50,7 +187,7 @@ pub enum Location {
     UserGlobal,
     /// A location in the Cargo `target` directory if it can be resolved, and
     /// otherwise in the current working directory.
-    Local,
+    LocalDev,
 }
 
 /// The source from which to install dependencies
@@ -125,7 +262,7 @@ impl Config {
     fn dir_path(&self, location: Location) -> PathBuf {
         let mut parts = match location {
             Location::UserGlobal => dirs::home_dir().expect("home dir not found"),
-            Location::Local => {
+            Location::LocalDev => {
                 std::env::var("CARGO_MANIFEST_DIR")
                     .map(PathBuf::from)
                     // Fall back to current directory if `CARGO_MANIFEST_DIR` is
@@ -599,7 +736,7 @@ mod tests {
         assert!(prod_path.starts_with(dirs::home_dir().unwrap()));
         assert!(prod_path.ends_with(PathBuf::from_iter(["test_dir_path", "slug"])));
 
-        let dev_path = config.dir_path(Location::Local);
+        let dev_path = config.dir_path(Location::LocalDev);
         assert!(
             dev_path.starts_with(
                 std::env::var("CARGO_MANIFEST_DIR")
@@ -614,12 +751,12 @@ mod tests {
     #[test]
     fn test_config_resolve_installation_dir() {
         let config = dummy_config(&["test_dir_resolve"]);
-        assert!(config.resolve_installation_dir(Location::Local).is_err());
+        assert!(config.resolve_installation_dir(Location::LocalDev).is_err());
 
-        let dev_path = config.dir_path(Location::Local);
+        let dev_path = config.dir_path(Location::LocalDev);
         fs::create_dir_all(&dev_path).unwrap();
 
-        let resolved = config.resolve_installation_dir(Location::Local).unwrap();
+        let resolved = config.resolve_installation_dir(Location::LocalDev).unwrap();
         assert_eq!(resolved, dev_path);
 
         fs::remove_dir_all(&dev_path).unwrap();
@@ -634,18 +771,18 @@ mod tests {
 
         let config = Config { rel_dir_path: &["test_dir_install"], version_slug: "slug" };
 
-        let dev_path = config.dir_path(Location::Local);
+        let dev_path = config.dir_path(Location::LocalDev);
         let _ = fs::remove_dir_all(&dev_path);
 
         let resolved = config
-            .resolve_installation_dir_or_install(Location::Local, Source::Local(archive_path))
+            .resolve_installation_dir_or_install(Location::LocalDev, Source::Local(archive_path))
             .unwrap();
         assert_eq!(resolved, dev_path);
         assert!(dev_path.join("bin/compiler").exists());
 
         let resolved2 = config
             .resolve_installation_dir_or_install(
-                Location::Local,
+                Location::LocalDev,
                 Source::Local(PathBuf::from("/nonexistent/path/should/not/be/accessed")),
             )
             .unwrap();
