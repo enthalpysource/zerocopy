@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779236280985,
+  "lastUpdate": 1779236328880,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -10054,6 +10054,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 729,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "71b1c404f0c8566268b3aa95c389448b180a87ce",
+          "message": "[anneal][v2] Initial commit of `exocrate`",
+          "timestamp": "2026-05-19T20:28:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3376/commits/71b1c404f0c8566268b3aa95c389448b180a87ce"
+        },
+        "date": 1779236324795,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 162,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 747,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 1007,
             "unit": "seconds"
           }
         ]
