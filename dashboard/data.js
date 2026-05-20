@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779236917615,
+  "lastUpdate": 1779237020051,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -10203,6 +10203,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 611,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8772fc4b3c36778c5cdb4adc7eaa8825541b2418",
+          "message": "[ci] Don't run on large runners (#3379)",
+          "timestamp": "2026-05-19T23:46:42Z",
+          "tree_id": "fe5018c83ed57d2fd917f95cfbc9e62e4d068c89",
+          "url": "https://github.com/google/zerocopy/commit/8772fc4b3c36778c5cdb4adc7eaa8825541b2418"
+        },
+        "date": 1779237015007,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 99,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 546,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 728,
             "unit": "seconds"
           }
         ]
