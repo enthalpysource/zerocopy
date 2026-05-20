@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779236035629,
+  "lastUpdate": 1779236201090,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -9965,6 +9965,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 721,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "b45304bdbf11f5c2bebf555ce00743e8e4ef1a2c",
+          "message": "[anneal][v2] Add and integrate nix-built exocrate",
+          "timestamp": "2026-05-19T20:28:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3383/commits/b45304bdbf11f5c2bebf555ce00743e8e4ef1a2c"
+        },
+        "date": 1779236198959,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 89,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 551,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 729,
             "unit": "seconds"
           }
         ]
