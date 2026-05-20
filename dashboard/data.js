@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779303927161,
+  "lastUpdate": 1779304643136,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -10807,6 +10807,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "acd7129840a5974ac91b2ad745e2282ead9ff051",
+          "message": "Only use `layout_for_ptr` feature for zerocopy tests",
+          "timestamp": "2026-05-20T18:49:44Z",
+          "url": "https://github.com/google/zerocopy/pull/3365/commits/acd7129840a5974ac91b2ad745e2282ead9ff051"
+        },
+        "date": 1779304640980,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 88,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 526,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 693,
             "unit": "seconds"
           }
         ]
