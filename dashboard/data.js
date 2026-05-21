@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779373837349,
+  "lastUpdate": 1779373970196,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -806,6 +806,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/commit/8772fc4b3c36778c5cdb4adc7eaa8825541b2418"
         },
         "date": 1779236391310,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Image Size",
+            "value": 11596,
+            "unit": "Megabytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": false,
+          "id": "0402dfa593751057a357c89fb8bd140780abd8d5",
+          "message": "Publish `Ptr[Inner]` behind a `--cfg` (#3387)\n\nRelease 0.8.49-alpha.\n\ngherrit-pr-id: Gblc7dfltwcey7wvtj3gjkseaqcltgwvf",
+          "timestamp": "2026-05-21T13:53:30Z",
+          "tree_id": "4107ade63e23461c265e5d6eac61e3103e733349",
+          "url": "https://github.com/google/zerocopy/commit/0402dfa593751057a357c89fb8bd140780abd8d5"
+        },
+        "date": 1779373968315,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
