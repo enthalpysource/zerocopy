@@ -355,6 +355,7 @@ fn delegate_cargo() -> Result<(), Error> {
 
                 install_targets_or_exit(version, &targets)?;
 
+                let is_asm = args_vec.first().map(|s| s.as_str()) == Some("asm");
                 let mut args = args_vec.into_iter();
 
                 let env_rustflags = env::vars()
@@ -407,10 +408,19 @@ fn delegate_cargo() -> Result<(), Error> {
                         let Some(arg) = args.next() else {
                             break;
                         };
-                        cmd.arg(fqpn(arg));
+                        if is_asm {
+                            cmd.arg(arg);
+                        } else {
+                            cmd.arg(fqpn(arg));
+                        }
                     } else if arg.starts_with("-p") {
-                        cmd.arg("-p");
-                        cmd.arg(fqpn(arg[2..].to_string()));
+                        if is_asm {
+                            cmd.arg("-p");
+                            cmd.arg(arg[2..].to_string());
+                        } else {
+                            cmd.arg("-p");
+                            cmd.arg(fqpn(arg[2..].to_string()));
+                        }
                     } else if arg == "--" {
                         cmd.arg("--");
                         cmd.args(args);
