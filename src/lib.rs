@@ -359,7 +359,7 @@ mod impls;
 #[doc(hidden)]
 pub mod layout;
 mod macros;
-#[doc(hidden)]
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub mod pointer;
 mod r#ref;
 mod split_at;
@@ -384,9 +384,9 @@ use core::{
 #[cfg(feature = "std")]
 use std::io;
 
-#[doc(hidden)]
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub use crate::pointer::invariant::{self, BecauseExclusive};
-#[doc(hidden)]
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub use crate::pointer::PtrInner;
 pub use crate::{
     byte_slice::*,
@@ -404,13 +404,11 @@ use alloc::{boxed::Box, vec::Vec};
 #[cfg(any(feature = "alloc", test))]
 use core::alloc::Layout;
 
-use util::MetadataOf;
-
 // Used by `KnownLayout`.
 #[doc(hidden)]
 pub use crate::layout::*;
 // Used by `TryFromBytes::is_bit_valid`.
-#[doc(hidden)]
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub use crate::pointer::{invariant::BecauseImmutable, Maybe, Ptr};
 // For each trait polyfill, as soon as the corresponding feature is stable, the
 // polyfill import will be unused because method/function resolution will prefer
@@ -420,6 +418,8 @@ pub use crate::pointer::{invariant::BecauseImmutable, Maybe, Ptr};
 // See the documentation on `util::polyfills` for more information.
 #[allow(unused_imports)]
 use crate::util::polyfills::{self, NonNullExt as _, NumExt as _};
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+pub use crate::util::MetadataOf;
 
 #[cfg(all(test, not(__ZEROCOPY_INTERNAL_USE_ONLY_DEV_MODE)))]
 const _: () = {

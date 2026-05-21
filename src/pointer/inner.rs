@@ -126,7 +126,8 @@ mod _def {
 impl<'a, T: ?Sized> PtrInner<'a, T> {
     /// Constructs a `PtrInner` from a reference.
     #[inline]
-    pub(crate) fn from_ref(ptr: &'a T) -> Self {
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub fn from_ref(ptr: &'a T) -> Self {
         let ptr = NonNull::from(ptr);
         // SAFETY:
         // 0. If `ptr`'s referent is not zero sized, then `ptr`, by invariant on
@@ -152,7 +153,8 @@ impl<'a, T: ?Sized> PtrInner<'a, T> {
 
     /// Constructs a `PtrInner` from a mutable reference.
     #[inline]
-    pub(crate) fn from_mut(ptr: &'a mut T) -> Self {
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub fn from_mut(ptr: &'a mut T) -> Self {
         let ptr = NonNull::from(ptr);
         // SAFETY:
         // 0. If `ptr`'s referent is not zero sized, then `ptr`, by invariant on
@@ -218,7 +220,8 @@ where
     T: ?Sized + KnownLayout,
 {
     /// Extracts the metadata of this `ptr`.
-    pub(crate) fn meta(self) -> MetadataOf<T> {
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub fn meta(self) -> MetadataOf<T> {
         let meta = T::pointer_to_metadata(self.as_ptr());
         // SAFETY: By invariant on `PtrInner`, `self.as_non_null()` addresses no
         // more than `isize::MAX` bytes.
@@ -234,7 +237,8 @@ where
     /// a pointer constructed from its address with the given `meta` metadata
     /// will address a subset of the allocation pointed to by `self`.
     #[inline]
-    pub(crate) unsafe fn with_meta(self, meta: T::PointerMetadata) -> Self
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub unsafe fn with_meta(self, meta: T::PointerMetadata) -> Self
     where
         T: KnownLayout,
     {
@@ -288,7 +292,8 @@ where
     ///
     /// If `l_len.padding_needed_for() != 0`, then the left pointer will overlap
     /// the right pointer to satisfy `T`'s padding requirements.
-    pub(crate) unsafe fn split_at_unchecked(
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub unsafe fn split_at_unchecked(
         self,
         l_len: crate::util::MetadataOf<T>,
     ) -> (Self, PtrInner<'a, [T::Elem]>)
@@ -323,7 +328,8 @@ where
     }
 
     /// Produces the trailing slice of `self`.
-    pub(crate) fn trailing_slice(self) -> PtrInner<'a, [T::Elem]>
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub fn trailing_slice(self) -> PtrInner<'a, [T::Elem]>
     where
         T: SplitAt,
     {
@@ -379,7 +385,8 @@ impl<'a, T> PtrInner<'a, [T]> {
     /// # Safety
     ///
     /// `range` is a valid range (`start <= end`) and `end <= self.meta()`.
-    pub(crate) unsafe fn slice_unchecked(self, range: Range<usize>) -> Self {
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub unsafe fn slice_unchecked(self, range: Range<usize>) -> Self {
         let base = self.as_non_null().cast::<T>().as_ptr();
 
         // SAFETY: The caller promises that `start <= end <= self.meta()`. By
@@ -424,7 +431,8 @@ impl<'a, T> PtrInner<'a, [T]> {
     }
 
     /// Iteratively projects the elements `PtrInner<T>` from `PtrInner<[T]>`.
-    pub(crate) fn iter(&self) -> impl Iterator<Item = PtrInner<'a, T>> {
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub fn iter(&self) -> impl Iterator<Item = PtrInner<'a, T>> {
         // FIXME(#429): Once `NonNull::cast` documents that it preserves
         // provenance, cite those docs.
         let base = self.as_non_null().cast::<T>().as_ptr();
@@ -498,7 +506,8 @@ impl<'a, T, const N: usize> PtrInner<'a, [T; N]> {
     /// Callers may assume that the returned `PtrInner` references the same
     /// address and length as `self`.
     #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn as_slice(self) -> PtrInner<'a, [T]> {
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub fn as_slice(self) -> PtrInner<'a, [T]> {
         let start = self.as_non_null().cast::<T>().as_ptr();
         let slice = core::ptr::slice_from_raw_parts_mut(start, N);
         // SAFETY: `slice` is not null, because it is derived from `start`
@@ -546,7 +555,8 @@ impl<'a> PtrInner<'a, [u8]> {
     /// - If this is a prefix cast, `ptr` has the same address as `self`.
     /// - If this is a suffix cast, `remainder` has the same address as `self`.
     #[inline]
-    pub(crate) fn try_cast_into<U>(
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub fn try_cast_into<U>(
         self,
         cast_type: CastType,
         meta: Option<U::PointerMetadata>,
