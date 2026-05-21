@@ -360,6 +360,7 @@ mod impls;
 pub mod layout;
 mod macros;
 #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(zerocopy_unstable_ptr)))]
 pub mod pointer;
 mod r#ref;
 mod split_at;
@@ -420,6 +421,7 @@ pub use crate::pointer::{invariant::BecauseImmutable, Maybe, Ptr};
 #[allow(unused_imports)]
 use crate::util::polyfills::{self, NonNullExt as _, NumExt as _};
 #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(zerocopy_unstable_ptr)))]
 pub use crate::util::MetadataOf;
 
 #[cfg(all(test, not(__ZEROCOPY_INTERNAL_USE_ONLY_DEV_MODE)))]
