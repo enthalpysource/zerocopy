@@ -8,18 +8,23 @@
 
 //! Abstractions over raw pointers.
 
+#![allow(missing_docs)]
+
 mod inner;
-#[doc(hidden)]
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub mod invariant;
 mod ptr;
-mod transmute;
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+pub mod transmute;
 
-#[doc(hidden)]
-pub use {inner::PtrInner, transmute::*};
-#[doc(hidden)]
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+pub use ptr::TryWithError;
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub use {
+    inner::PtrInner,
     invariant::{BecauseExclusive, BecauseImmutable, Read},
-    ptr::*,
+    ptr::Ptr,
+    transmute::*,
 };
 
 use crate::wrappers::ReadOnly;
@@ -28,6 +33,7 @@ use crate::wrappers::ReadOnly;
 /// to [`TryFromBytes::is_bit_valid`].
 ///
 /// [`TryFromBytes::is_bit_valid`]: crate::TryFromBytes::is_bit_valid
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub type Maybe<'a, T, Alignment = invariant::Unaligned> =
     Ptr<'a, ReadOnly<T>, (invariant::Shared, Alignment, invariant::Initialized)>;
 
@@ -44,7 +50,7 @@ where
     )
 }
 
-#[doc(hidden)]
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub mod cast {
     use core::{marker::PhantomData, mem};
 
