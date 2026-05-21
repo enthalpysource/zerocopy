@@ -359,7 +359,7 @@ mod impls;
 #[doc(hidden)]
 pub mod layout;
 mod macros;
-#[doc(hidden)]
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
 pub mod pointer;
 mod r#ref;
 mod split_at;
@@ -385,9 +385,10 @@ use core::{
 use std::io;
 
 #[doc(hidden)]
-pub use crate::pointer::invariant::{self, BecauseExclusive};
-#[doc(hidden)]
-pub use crate::pointer::PtrInner;
+pub use crate::pointer::{
+    invariant::{self, BecauseExclusive},
+    PtrInner,
+};
 pub use crate::{
     byte_slice::*,
     byteorder::*,
@@ -404,8 +405,6 @@ use alloc::{boxed::Box, vec::Vec};
 #[cfg(any(feature = "alloc", test))]
 use core::alloc::Layout;
 
-use util::MetadataOf;
-
 // Used by `KnownLayout`.
 #[doc(hidden)]
 pub use crate::layout::*;
@@ -420,6 +419,8 @@ pub use crate::pointer::{invariant::BecauseImmutable, Maybe, Ptr};
 // See the documentation on `util::polyfills` for more information.
 #[allow(unused_imports)]
 use crate::util::polyfills::{self, NonNullExt as _, NumExt as _};
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+pub use crate::util::MetadataOf;
 
 #[cfg(all(test, not(__ZEROCOPY_INTERNAL_USE_ONLY_DEV_MODE)))]
 const _: () = {

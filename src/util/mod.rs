@@ -463,7 +463,7 @@ mod len_of {
     use super::*;
 
     /// A witness type for metadata of a valid instance of `&T`.
-    pub(crate) struct MetadataOf<T: ?Sized + KnownLayout> {
+    pub struct MetadataOf<T: ?Sized + KnownLayout> {
         /// # Safety
         ///
         /// The size of an instance of `&T` with the given metadata is not
@@ -474,8 +474,19 @@ mod len_of {
 
     impl<T: ?Sized + KnownLayout> Copy for MetadataOf<T> {}
     impl<T: ?Sized + KnownLayout> Clone for MetadataOf<T> {
+        #[inline]
         fn clone(&self) -> Self {
             *self
+        }
+    }
+
+    impl<T: ?Sized + KnownLayout> core::fmt::Debug for MetadataOf<T>
+    where
+        T::PointerMetadata: core::fmt::Debug,
+    {
+        #[inline]
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            f.debug_struct("MetadataOf").field("meta", &self.meta).finish()
         }
     }
 
@@ -654,7 +665,7 @@ mod len_of {
     }
 }
 
-pub(crate) use len_of::MetadataOf;
+pub use len_of::MetadataOf;
 
 /// Since we support multiple versions of Rust, there are often features which
 /// have been stabilized in the most recent stable release which do not yet
