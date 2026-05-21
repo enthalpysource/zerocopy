@@ -1,0 +1,144 @@
+use std::collections::HashSet;
+use std::path::PathBuf;
+use sha2::{Digest as _, Sha256};
+
+use crate::{
+    parse::ParsedLeanItem,
+    resolve::{AnnealTargetKind, AnnealTargetName, LockedRoots},
+};
+
+pub struct AnnealArtifact {
+    pub name: AnnealTargetName,
+    pub target_kind: AnnealTargetKind,
+    /// The path to the crate's `Cargo.toml`.
+    pub manifest_path: PathBuf,
+    pub items: Vec<ParsedLeanItem<crate::parse::hkd::Safe>>,
+    // NOTE: We store `start_from` as a `HashSet` rather than a `Vec` as an
+    // optimization: when we encounter items which we can't name (which carry
+    // Anneal annotations), we add their parent module to the list of
+    // entrypoints. If there are multiple items in the same module, this can
+    // lead to duplication in the list of entrypoints. Storing them in a
+    // `HashSet` avoids us having to de-dup later.
+    pub start_from: HashSet<String>,
+}
+
+impl AnnealArtifact {
+    /// Returns a unique, Lean-compatible "slug" for this artifact that matches
+    /// the name that Aeneas will expect for the corresponding Lean module.
+    ///
+    /// Guarantees uniqueness based on manifest path even if multiple packages
+    /// have the same name. The slug is guaranteed to be a valid Lean
+    /// identifier (no hyphens).
+    pub fn artifact_slug(&self) -> String {
+        fn hash(data: &[u8]) -> u64 {
+            let mut hasher = Sha256::new();
+            hasher.update(data);
+            let result = hasher.finalize();
+            let mut bytes = [0u8; 8];
+            bytes.copy_from_slice(&result[0..8]);
+            u64::from_le_bytes(bytes)
+        }
+
+        // Double-hash to make sure we can distinguish between e.g.
+        // (manifest_path, target_name) = ("abc", "def") and ("ab", "cdef"),
+        // which would hash identically if we just hashed their concatenation.
+        //
+        // Use SHA-256 not for security but rather stability – Rust's
+        // `DefaultHasher` doesn't guarantee stability even across runs of the
+        // same binary.
+        //
+        // `ANNEAL_HASH_WITH_REMOVED_PREFIX` allows our integration test
+        // framework to strip the randomized sandbox prefix from the manifest
+        // path before hashing, ensuring deterministic hashes even when running
+        // in a sandboxed environment.
+        let mut manifest_path_to_hash = self.manifest_path.as_path();
+        if let Ok(prefix) = std::env::var("ANNEAL_HASH_WITH_REMOVED_PREFIX") {
+            if let Ok(stripped) = self.manifest_path.strip_prefix(&prefix) {
+                manifest_path_to_hash = stripped;
+            }
+        }
+        let h0 = hash(manifest_path_to_hash.as_os_str().as_encoded_bytes());
+        let h1 = hash(self.name.target_name.as_bytes());
+        let h2 = hash(&[self.target_kind as u8]);
+        let hashes = [h0, h1, h2];
+        let h = hash(&hashes.map(u64::to_ne_bytes).concat());
+
+        // Converts kebab-case -> PascalCase.
+        // We convert both package and target names to PascalCase to ensure
+        // the generated Lean module name is a valid and idiomatic Lean
+        // identifier, matching Aeneas's output format.
+        let to_pascal = |s: &str| {
+            s.split(['-', '_'])
+                .map(|segment| {
+                    let mut chars = segment.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
+                    }
+                })
+                .collect::<String>()
+        };
+
+        let pkg = to_pascal(self.name.package_name.as_str());
+        let target = to_pascal(&self.name.target_name);
+
+        // We use the hash to ensure uniqueness.
+        format!("{}{}{:08x}", pkg, target, h)
+    }
+
+    /// Returns the name of the `.llbc` file to use for this artifact.
+    pub fn llbc_file_name(&self) -> String {
+        format!("{}.llbc", self.artifact_slug())
+    }
+
+    /// Returns the name of the `.lean` spec file to use for this artifact.
+    pub fn lean_spec_file_name(&self) -> String {
+        format!("{}.lean", self.artifact_slug())
+    }
+
+    /// Returns the absolute path to the .llbc file.
+    ///
+    /// This method requires `LockedRoots` to ensure that the caller holds the
+    /// build lock before accessing the build artifact path.
+    pub fn llbc_path(&self, roots: &LockedRoots) -> PathBuf {
+        roots.llbc_root().join(self.llbc_file_name())
+    }
+}
+
+pub fn scan_workspace(roots: &crate::resolve::Roots) -> anyhow::Result<Vec<AnnealArtifact>> {
+    let mut artifacts = Vec::new();
+    for target in &roots.roots {
+        let mut start_from = std::collections::HashSet::new();
+        if let Ok(content) = std::fs::read_to_string(&target.src_path) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                let mut func_name = None;
+                if let Some(rest) = trimmed.strip_prefix("fn ") {
+                    func_name = rest.split('(').next();
+                } else if let Some(rest) = trimmed.strip_prefix("pub fn ") {
+                    func_name = rest.split('(').next();
+                }
+                if let Some(name) = func_name {
+                    let name = name.trim();
+                    if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                        start_from.insert(format!("crate::{}", name));
+                    }
+                }
+            }
+        }
+
+        // If we found nothing, but it's a bin, assume `main`
+        if start_from.is_empty() && target.kind == crate::resolve::AnnealTargetKind::Bin {
+            start_from.insert("crate::main".to_string());
+        }
+
+        artifacts.push(AnnealArtifact {
+            name: target.name.clone(),
+            target_kind: target.kind,
+            manifest_path: target.manifest_path.clone(),
+            items: vec![], // empty for now
+            start_from,
+        });
+    }
+    Ok(artifacts)
+}

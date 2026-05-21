@@ -9,6 +9,14 @@
 
 use clap::Parser as _;
 
+mod util;
+mod diagnostics;
+mod resolve;
+mod parse;
+mod scanner;
+mod charon;
+mod setup;
+
 /// Anneal: A Literate Verification Toolchain
 #[derive(clap::Parser, Debug)]
 #[command(name = "cargo-anneal", version, about, long_about = None)]
@@ -21,6 +29,8 @@ struct Cli {
 enum Commands {
     /// Setup Anneal dependencies
     Setup(SetupArgs),
+    /// Expand a crate (runs Charon)
+    Expand(ExpandArgs),
 }
 
 #[derive(clap::Parser, Debug)]
@@ -30,38 +40,36 @@ pub struct SetupArgs {
     pub local_archive: Option<std::path::PathBuf>,
 }
 
-exocrate::config! {
-    const CONFIG: Config = Config {
-        rel_dir_path: [".anneal", "toolchain"],
-        versioned_files: &["../Cargo.toml", "../Cargo.lock"],
-    };
-}
+#[derive(clap::Parser, Debug)]
+pub struct ExpandArgs {
+    #[command(flatten)]
+    pub resolve_args: resolve::Args,
 
-exocrate::parse_remote_archive! {
-    const REMOTE: RemoteArchive = "Cargo.toml" [
-        (linux, x86_64),
-        (macos, x86_64),
-        (linux, aarch64),
-        (macos, aarch64),
-    ];
+    /// Controls where LLBC output is placed on the filesystem.
+    #[arg(long, value_name = "output-dir")]
+    pub output_dir: Option<std::path::PathBuf>,
 }
 
 fn setup(args: SetupArgs) {
-    let location = if std::env::var("__ANNEAL_LOCAL_DEV").is_ok() {
-        exocrate::Location::Local
-    } else {
-        exocrate::Location::UserGlobal
-    };
-    let source = match args.local_archive {
-        Some(local_archive) => exocrate::Source::Local(local_archive),
-        None => exocrate::Source::Remote(REMOTE),
-    };
+    setup::run_setup(setup::SetupArgs {
+        local_archive: args.local_archive,
+    })
+    .expect("failed to setup toolchain");
+}
 
-    let installation_dir = CONFIG
-        .resolve_installation_dir_or_install(location, source)
-        // FIXME: Implement unified error reporting (e.g., via `anyhow`).
-        .expect("failed to resolve-or-install dependencies");
-    log::info!("anneal toolchain is installed at {:?}", installation_dir);
+fn expand(args: ExpandArgs) -> anyhow::Result<()> {
+    let roots = resolve::resolve_roots(&args.resolve_args)?;
+    let packages = scanner::scan_workspace(&roots)?;
+    if packages.is_empty() {
+        log::warn!("No targets found to expand.");
+        return Ok(());
+    }
+    let mut locked_roots = roots.lock_run_root()?;
+    if let Some(output_dir) = args.output_dir {
+        locked_roots.llbc_override = Some(output_dir);
+    }
+    charon::run_charon(&args.resolve_args, &locked_roots, &packages)?;
+    Ok(())
 }
 
 fn main() {
@@ -79,6 +87,12 @@ fn main() {
 
     match args.command {
         Commands::Setup(args) => setup(args),
+        Commands::Expand(args) => {
+            if let Err(e) = expand(args) {
+                eprintln!("Error: {:?}", e);
+                std::process::exit(1);
+            }
+        }
     }
 }
 
