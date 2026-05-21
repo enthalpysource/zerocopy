@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779376428410,
+  "lastUpdate": 1779378126999,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6360,6 +6360,33 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3388/commits/a8e831be33afc8a7f1e7cb3e776a83249c78d64c"
         },
         "date": 1779375295719,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "881160631750e2e1a5876327f5f14804a77d4cc8",
+          "message": "[docs] Document `--cfg=zerocopy_unstable_ptr` on internal rendered docs (#3388)\n\ngherrit-pr-id: G7p44q5rcehvy46vrrowj5vxxkgp3xuw7",
+          "timestamp": "2026-05-21T15:41:06Z",
+          "url": "https://github.com/google/zerocopy/commit/881160631750e2e1a5876327f5f14804a77d4cc8"
+        },
+        "date": 1779378124547,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
