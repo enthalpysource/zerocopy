@@ -31,6 +31,7 @@ pub fn run_charon(
     toolchain: &crate::setup::Toolchain,
     roots: &crate::resolve::LockedRoots,
     packages: &[crate::scanner::AnnealArtifact],
+    show_progress: bool,
 ) -> anyhow::Result<()> {
     let llbc_root = roots.llbc_root();
     std::fs::create_dir_all(&llbc_root).context("Failed to create LLBC output directory")?;
@@ -50,7 +51,7 @@ pub fn run_charon(
     let print_mutex = std::sync::Arc::new(std::sync::Mutex::new(()));
 
     // Determine if we should show progress bar.
-    let show_progress = std::env::var("ANNEAL_NO_PROGRESS").is_err() && packages.len() == 1;
+    let show_progress = show_progress && packages.len() == 1;
 
     packages.par_iter().try_for_each(|artifact| {
         if artifact.start_from.is_empty() {
@@ -75,7 +76,9 @@ pub fn run_charon(
         let llbc_path = artifact.llbc_path(roots);
         cmd.arg("--dest-file").arg(llbc_path);
 
-        // Fail fast on errors.
+        // Fail fast on errors: if Charon (or `rustc`) encounters a compilation error or
+        // translation failure (e.g., an unsupported Rust feature), it will terminate
+        // the process immediately rather than attempting to proceed and translate other parts of the crate.
         cmd.arg("--abort-on-error");
 
         for item in &artifact.items {
@@ -117,7 +120,9 @@ pub fn run_charon(
         let start_from_str = start_from.join(",");
         if start_from_str.len() > crate::util::ARG_CHAR_LIMIT {
             // FIXME: Pass the list of entry points to Charon via a file instead
-            // of the command line.
+            // of the command line. This is currently blocked on upstream Charon
+            // supporting response files or file-based entry points:
+            // https://github.com/AeneasVerif/charon/issues/1020
             anyhow::bail!(
                 "The list of Anneal entry points for package '{}' is too large ({} bytes). \n\
                  This exceeds safe OS command-line limits.",
@@ -259,8 +264,7 @@ mod tests {
 
     #[test]
     fn test_run_charon_simple() {
-        // Disable progress bar for test.
-        unsafe { std::env::set_var("ANNEAL_NO_PROGRESS", "1"); }
+        // The test environment disables progress bar via configuration injection.
 
         // 1. Create a temporary directory.
         let temp_dir = tempfile::tempdir().unwrap();
@@ -313,13 +317,13 @@ mod tests {
             .join("charon-only");
         let toolchain = crate::setup::Toolchain::new_test(toolchain_root);
 
-        let res = run_charon(&args, &toolchain, &locked_roots, &packages);
+        let res = run_charon(&args, &toolchain, &locked_roots, &packages, false);
         assert!(res.is_ok(), "charon failed: {:?}", res.err());
 
         // 9. Verify .llbc file exists.
         let llbc_path = packages[0].llbc_path(&locked_roots);
         assert!(llbc_path.exists(), "llbc file not found at {:?}", llbc_path);
 
-        unsafe { std::env::remove_var("ANNEAL_NO_PROGRESS"); }
+
     }
 }

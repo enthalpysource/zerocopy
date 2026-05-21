@@ -75,7 +75,8 @@ fn expand(args: ExpandArgs) -> anyhow::Result<()> {
         locked_roots.llbc_override = Some(output_dir);
     }
     let toolchain = crate::setup::Toolchain::resolve()?;
-    crate::charon::run_charon(&args.resolve_args, &toolchain, &locked_roots, &packages)?;
+    let show_progress = std::env::var("ANNEAL_NO_PROGRESS").is_err();
+    crate::charon::run_charon(&args.resolve_args, &toolchain, &locked_roots, &packages, show_progress)?;
     Ok(())
 }
 
@@ -114,13 +115,23 @@ fn main() {
 mod tests {
     #[cfg(feature = "exocrate_tests")]
     #[test]
-    fn test_setup() {
-        unsafe { std::env::set_var("__ANNEAL_LOCAL_DEV", "1"); }
+    fn test_setup_and_toolchain_paths() {
+        // 1. Run setup (this compiles dependencies and installs them locally to target/.anneal
+        // because __ANNEAL_LOCAL_DEV=1 is defined in our .cargo/config.toml!).
         super::setup(super::SetupArgs {
             // ASSUMPTION: Dependency builder installs archive at
             // `target/anneal-exocrate.tar.zst`.
             local_archive: Some("target/anneal-exocrate.tar.zst".into()),
         });
-        unsafe { std::env::remove_var("__ANNEAL_LOCAL_DEV"); }
+
+        // 2. Once setup completes successfully, resolve the toolchain.
+        let toolchain = crate::setup::Toolchain::resolve().expect("Failed to resolve toolchain");
+
+        // 3. Verify that all returned paths exist as directories.
+        assert!(toolchain.root().is_dir(), "root is not a directory: {:?}", toolchain.root());
+        assert!(toolchain.aeneas_bin_dir().is_dir(), "aeneas_bin_dir is not a directory: {:?}", toolchain.aeneas_bin_dir());
+        assert!(toolchain.rust_sysroot().is_dir(), "rust_sysroot is not a directory: {:?}", toolchain.rust_sysroot());
+        assert!(toolchain.rust_bin().is_dir(), "rust_bin is not a directory: {:?}", toolchain.rust_bin());
+        assert!(toolchain.rust_lib().is_dir(), "rust_lib is not a directory: {:?}", toolchain.rust_lib());
     }
 }

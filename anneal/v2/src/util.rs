@@ -94,16 +94,26 @@ pub(crate) fn patch_trace_files(dir: &std::path::Path, replacements: &[(&str, &s
 }
 
 /// Prepends a path to an existing environment variable,
-/// separating them with a colon if the variable is not empty. This is used
-/// to inject our managed Rust toolchain paths before the system paths.
-pub(crate) fn prepend_to_env_var(var_name: &str, new_path: &std::path::Path) -> std::ffi::OsString {
-    let current_val = std::env::var_os(var_name).unwrap_or_default();
+/// separating them with a colon if the variable is not empty. This contains the
+/// pure string formatting logic.
+pub(crate) fn prepend_to_env_var_impl(
+    current_val: std::ffi::OsString,
+    new_path: &std::path::Path,
+) -> std::ffi::OsString {
     let mut combined = new_path.to_path_buf().into_os_string();
     if !current_val.is_empty() {
         combined.push(":");
         combined.push(current_val);
     }
     combined
+}
+
+/// Prepends a path to an existing environment variable in the active process
+/// environment, separating them with a colon if the variable is not empty.
+/// This is used to inject our managed Rust toolchain paths before the system paths.
+pub(crate) fn prepend_to_env_var(var_name: &str, new_path: &std::path::Path) -> std::ffi::OsString {
+    let current_val = std::env::var_os(var_name).unwrap_or_default();
+    prepend_to_env_var_impl(current_val, new_path)
 }
 
 /// OS command-line length limits (Windows is ~32k; Linux `ARG_MAX` is
@@ -189,20 +199,68 @@ mod tests {
 
     #[test]
     fn test_prepend_to_env_var() {
-        let var_name = "ANNEAL_TEST_VAR";
-        unsafe { std::env::remove_var(var_name); }
-
-        // Test when var is empty.
+        // Test when current value is empty.
         let path1 = std::path::Path::new("/path/one");
-        let res1 = prepend_to_env_var(var_name, path1);
+        let res1 = prepend_to_env_var_impl(std::ffi::OsString::new(), path1);
         assert_eq!(res1, "/path/one");
 
-        // Test when var is not empty.
-        unsafe { std::env::set_var(var_name, &res1); }
+        // Test when current value is not empty.
         let path2 = std::path::Path::new("/path/two");
-        let res2 = prepend_to_env_var(var_name, path2);
+        let res2 = prepend_to_env_var_impl(res1, path2);
         assert_eq!(res2, "/path/two:/path/one");
+    }
 
-        unsafe { std::env::remove_var(var_name); }
+    #[test]
+    fn test_dir_lock_exclusive_mutual_exclusion() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let lock_path = temp_dir.path().to_path_buf();
+
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let barrier_clone = std::sync::Arc::clone(&barrier);
+        let lock_path_clone = lock_path.clone();
+
+        let lock_released = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let lock_released_clone = std::sync::Arc::clone(&lock_released);
+
+        // Thread A acquires the lock.
+        let thread_a = std::thread::spawn(move || {
+            let _lock = DirLock::lock_exclusive(lock_path_clone).expect("Failed to lock exclusive");
+            barrier_clone.wait(); // Signal Thread B that A holds the lock.
+            
+            // Simulate brief work holding the lock.
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            lock_released_clone.store(true, std::sync::atomic::Ordering::Relaxed);
+            // _lock drops here, releasing the lock.
+        });
+
+        // Thread B waits for Thread A to acquire the lock, then tries to acquire it itself.
+        let thread_b = std::thread::spawn(move || {
+            barrier.wait(); // Wait for Thread A to acquire lock.
+            
+            // Attempt to acquire lock. This should block until Thread A releases it.
+            let _lock = DirLock::lock_exclusive(lock_path).expect("Failed to lock exclusive in B");
+            
+            // Assert that B only successfully locked the directory AFTER A released it.
+            assert!(lock_released.load(std::sync::atomic::Ordering::Relaxed), "Thread B acquired lock before Thread A released it!");
+        });
+
+        thread_a.join().unwrap();
+        thread_b.join().unwrap();
+    }
+
+    #[test]
+    fn test_dir_lock_shared_coexistence() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let lock_path = temp_dir.path().to_path_buf();
+
+        // Thread A acquires shared lock.
+        let lock_a = DirLock::lock_shared(lock_path.clone()).expect("Failed to lock shared");
+
+        // Thread B should be able to acquire shared lock immediately without blocking.
+        let lock_b = DirLock::lock_shared(lock_path).expect("Failed to lock shared concurrently");
+
+        // Both locks are held.
+        drop(lock_a);
+        drop(lock_b);
     }
 }

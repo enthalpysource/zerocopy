@@ -40,8 +40,9 @@ impl Tool {
 
 const AENEAS_DIR: &str = "aeneas";
 const RUST_SYSROOT: &str = "rust";
-const BIN_DIR: &str = "bin";
-const LIB_DIR: &str = "lib";
+const AENEAS_BIN_DIR: &str = "bin";
+const RUST_BIN_DIR: &str = "bin";
+const RUST_LIB_DIR: &str = "lib";
 
 pub struct Toolchain {
     root: std::path::PathBuf,
@@ -65,7 +66,7 @@ impl Toolchain {
     }
 
     pub fn aeneas_bin_dir(&self) -> std::path::PathBuf {
-        self.root.join(AENEAS_DIR).join(BIN_DIR)
+        self.root.join(AENEAS_DIR).join(AENEAS_BIN_DIR)
     }
 
     pub fn rust_sysroot(&self) -> std::path::PathBuf {
@@ -73,11 +74,11 @@ impl Toolchain {
     }
 
     pub fn rust_bin(&self) -> std::path::PathBuf {
-        self.rust_sysroot().join(BIN_DIR)
+        self.rust_sysroot().join(RUST_BIN_DIR)
     }
 
     pub fn rust_lib(&self) -> std::path::PathBuf {
-        self.rust_sysroot().join(LIB_DIR)
+        self.rust_sysroot().join(RUST_LIB_DIR)
     }
 
     pub fn command(&self, tool: Tool) -> std::process::Command {
@@ -172,22 +173,4 @@ pub fn run_test_setup() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    #[cfg(feature = "exocrate_tests")]
-    #[test]
-    fn test_toolchain_paths() {
-        // Ensure toolchain is installed locally for test.
-        unsafe { std::env::set_var("__ANNEAL_LOCAL_DEV", "1"); }
-        
-        let toolchain = Toolchain::resolve().expect("Failed to resolve toolchain");
-        
-        assert!(toolchain.root().is_dir(), "root is not a directory: {:?}", toolchain.root());
-        assert!(toolchain.aeneas_bin_dir().is_dir(), "aeneas_bin_dir is not a directory: {:?}", toolchain.aeneas_bin_dir());
-        assert!(toolchain.rust_sysroot().is_dir(), "rust_sysroot is not a directory: {:?}", toolchain.rust_sysroot());
-        assert!(toolchain.rust_bin().is_dir(), "rust_bin is not a directory: {:?}", toolchain.rust_bin());
-        assert!(toolchain.rust_lib().is_dir(), "rust_lib is not a directory: {:?}", toolchain.rust_lib());
-    }
-}
