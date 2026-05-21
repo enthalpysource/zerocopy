@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779371675845,
+  "lastUpdate": 1779372444228,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -11259,6 +11259,43 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 636,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "0402dfa593751057a357c89fb8bd140780abd8d5",
+          "message": "Publish `Ptr[Inner]` behind a `--cfg` (#3387)\n\nRelease 0.8.49-alpha.\n\ngherrit-pr-id: Gblc7dfltwcey7wvtj3gjkseaqcltgwvf",
+          "timestamp": "2026-05-21T13:53:30Z",
+          "url": "https://github.com/google/zerocopy/commit/0402dfa593751057a357c89fb8bd140780abd8d5"
+        },
+        "date": 1779372440098,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 94,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 561,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 737,
             "unit": "seconds"
           }
         ]
