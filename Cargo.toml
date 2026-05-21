@@ -11,6 +11,7 @@
 # avoids issues like:
 # https://github.com/dtolnay/trybuild/issues/207#issuecomment-131227.594
 [workspace]
+members = [".", "ptr", "testutil", "zerocopy-derive"]
 
 [package]
 edition = "2021"

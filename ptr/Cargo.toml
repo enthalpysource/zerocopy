@@ -1,0 +1,7 @@
+[package]
+name = "ptr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+zerocopy = { path = "..", features = ["__internal_use_only_features_that_work_on_stable"] }
