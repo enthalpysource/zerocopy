@@ -1,6 +1,3 @@
-use std::marker::PhantomData;
-use std::path::PathBuf;
-
 pub mod hkd {
     pub struct Safe;
     pub trait ThreadSafety {}
@@ -17,7 +14,7 @@ pub struct AnnealDecorated<T, B> {
 
 #[derive(Clone, Debug)]
 pub enum FunctionItem<M> {
-    Free(PhantomData<M>),
+    Free(std::marker::PhantomData<M>),
 }
 
 impl<M> FunctionItem<M> {
@@ -35,7 +32,7 @@ pub enum FunctionBlockInner {
 #[derive(Clone, Debug)]
 pub struct FunctionAnnealBlock<M> {
     pub inner: FunctionBlockInner,
-    _phantom: PhantomData<M>,
+    _phantom: std::marker::PhantomData<M>,
 }
 
 #[derive(Clone, Debug)]
@@ -48,7 +45,7 @@ pub enum ParsedItem<M> {
 pub struct ParsedLeanItem<M> {
     pub item: ParsedItem<M>,
     pub module_path: Vec<String>,
-    pub source_file: PathBuf,
+    pub source_file: std::path::PathBuf,
 }
 
 pub mod attr {

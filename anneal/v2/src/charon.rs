@@ -1,25 +1,15 @@
-// Orchestration of Charon extraction.
-//
-// This module handles the invocation of the `charon` tool to extract
-// Low-Level Borrow Calculus (LLBC) from Rust crates. It manages:
-// - Setting up the Charon command and arguments (including features,
-//   targets, and output paths).
-// - Handling `unsafe(axiom)` functions by marking them as opaque to Charon.
-// - Streaming and filtering compiler output to provide user-friendly
-//   feedback via `indicatif` and `miette`.
-// - Validating the extraction result.
+//! Orchestration of Charon extraction.
+//!
+//! This module handles the invocation of the `charon` tool to extract
+//! Low-Level Borrow Calculus (LLBC) from Rust crates. It manages:
+//! - Setting up the Charon command and arguments (including features,
+//!   targets, and output paths).
+//! - Handling `unsafe(axiom)` functions by marking them as opaque to Charon.
+//! - Streaming and filtering compiler output to provide user-friendly
+//!   feedback via `indicatif` and `miette`.
+//! - Validating the extraction result.
 
-use std::io::{BufRead, BufReader};
-
-use anyhow::{Context as _, Result, bail};
-use cargo_metadata::{Message, diagnostic::DiagnosticLevel};
-
-use crate::{
-    parse::{ParsedItem, attr::FunctionBlockInner},
-    resolve::{AnnealTargetKind, Args, LockedRoots},
-    scanner::AnnealArtifact,
-    setup::Tool,
-};
+use anyhow::Context as _;
 
 /// Runs Charon on the specified packages to generate LLBC artifacts.
 ///
@@ -34,34 +24,33 @@ use crate::{
 ///   minimize extraction scope.
 /// - **Output Handling**: capturing stdout/stderr, parsing JSON compiler
 ///   messages, and rendering them using `DiagnosticMapper`.
-pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact]) -> Result<()> {
+pub fn run_charon(
+    args: &crate::resolve::Args,
+    roots: &crate::resolve::LockedRoots,
+    packages: &[crate::scanner::AnnealArtifact],
+    toolchain: &crate::setup::Toolchain,
+) -> anyhow::Result<()> {
     let llbc_root = roots.llbc_root();
     std::fs::create_dir_all(&llbc_root).context("Failed to create LLBC output directory")?;
 
-    let toolchain = crate::setup::Toolchain::resolve()?;
+    let rust_bin = toolchain.rust_bin();
+    let rust_lib = toolchain.rust_lib();
 
-    let rust_sysroot = toolchain.root.join("rust");
-    let rust_bin = rust_sysroot.join("bin");
-    let rust_lib = rust_sysroot.join("lib");
-
-    // Helper closure to prepend a path to an existing environment variable,
-    // separating them with a colon if the variable is not empty. This is used
-    // to inject our managed Rust toolchain paths before the system paths.
-    let prepend_to_env_var = |var_name: &str, new_path: std::path::PathBuf| {
-        let current_val = std::env::var_os(var_name).unwrap_or_default();
-        let mut combined = new_path.into_os_string();
-        if !current_val.is_empty() {
-            combined.push(":");
-            combined.push(current_val);
-        }
-        combined
-    };
-
-    let new_path = prepend_to_env_var("PATH", rust_bin);
+    // We prepend the managed Rust toolchain's `bin` directory to `PATH`. This is
+    // necessary because Charon is a compiler frontend that invokes `cargo` and
+    // `rustc` under the hood. To ensure hermeticity and correctness, we must force
+    // Charon to use our pinned nightly compiler version rather than falling back
+    // to whatever version happens to be installed in the system `PATH`.
+    let new_path = crate::util::prepend_to_env_var("PATH", rust_bin);
 
     let lib_env_var =
         if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" } else { "LD_LIBRARY_PATH" };
-    let new_lib_path = prepend_to_env_var(lib_env_var, rust_lib);
+    // We set `LD_LIBRARY_PATH` (or `DYLD_LIBRARY_PATH` on macOS) to point to the
+    // managed Rust toolchain's `lib` directory. This is strictly required because
+    // `charon-driver` is a dynamic executable that links against `rustc` compiler
+    // dynamic libraries (like `librustc_driver-*.so`). Without this, the dynamic
+    // linker will fail to load the libraries when `charon-driver` is executed.
+    let new_lib_path = crate::util::prepend_to_env_var(lib_env_var, rust_lib);
 
     for artifact in packages {
         if artifact.start_from.is_empty() {
@@ -70,8 +59,12 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
 
         log::info!("Invoking Charon on package '{}'...", artifact.name.package_name);
 
-        let mut cmd = toolchain.command(Tool::Charon);
+        let mut cmd = toolchain.command(crate::setup::Tool::Charon);
 
+        // We set `CHARON_TOOLCHAIN_IS_IN_PATH=1` to instruct Charon to bypass its
+        // standard toolchain resolution logic (which expects the compiler to be
+        // managed via `rustup`). Instead, it will directly use the `rustc` and
+        // `cargo` binaries we prepended to the `PATH` environment variable.
         cmd.env("CHARON_TOOLCHAIN_IS_IN_PATH", "1");
         cmd.env("PATH", &new_path);
         cmd.env(lib_env_var, &new_lib_path);
@@ -79,18 +72,21 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
         cmd.arg("cargo");
         cmd.arg("--preset=aeneas");
 
-        // Output artifacts to target/anneal/<hash>/llbc
+        // Output artifacts to target/anneal/<hash>/llbc.
         let llbc_path = artifact.llbc_path(roots);
-        log::debug!("Writing .llbc file to {}", llbc_path.display());
+        log::debug!("Writing .llbc file to {:?}", llbc_path);
         cmd.arg("--dest-file").arg(llbc_path);
 
-        // Fail fast on errors
+        // We use `--abort-on-error` to fail fast. If Charon (or `rustc`)
+        // encounters a compilation error or translation failure (e.g., an
+        // unsupported Rust feature), it will terminate the process immediately
+        // rather than attempting to proceed and translate other parts of the crate.
         cmd.arg("--abort-on-error");
 
         for item in &artifact.items {
-            if let ParsedItem::Function(func) = &item.item {
-                // Check if the function body is an Axiom (unsafe)
-                if let FunctionBlockInner::Axiom { .. } = func.anneal.inner {
+            if let crate::parse::ParsedItem::Function(func) = &item.item {
+                // Check if the function body is an Axiom (unsafe).
+                if let crate::parse::attr::FunctionBlockInner::Axiom { .. } = func.anneal.inner {
                     // Mark `unsafe(axiom)` functions as opaque in Charon. This
                     // instructs Aeneas to treat the function as external and
                     // generate a template file (`FunsExternal_Template.lean`)
@@ -103,6 +99,7 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
                     opaque_name.push_str("::");
                     opaque_name.push_str(func.item.name());
 
+                    log::trace!("Marking item as opaque in Charon: {}", opaque_name);
                     cmd.args(["--opaque", &opaque_name]);
                 }
             }
@@ -116,14 +113,17 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
         let mut start_from = artifact.start_from.iter().map(String::as_ref).collect::<Vec<_>>();
         start_from.sort_unstable(); // Slightly faster than `sort`, and equivalent for strings.
 
+        if log::log_enabled!(log::Level::Trace) {
+            for entry in &start_from {
+                log::trace!("Translation entry point: {}", entry);
+            }
+        }
+
         let start_from_str = start_from.join(",");
-        // OS command-line length limits (Windows is ~32k; Linux `ARG_MAX` is
-        // usually larger, but variable)
-        const ARG_CHAR_LIMIT: usize = 32_768;
-        if start_from_str.len() > ARG_CHAR_LIMIT {
+        if start_from_str.len() > crate::util::ARG_CHAR_LIMIT {
             // FIXME: Pass the list of entry points to Charon via a file instead
             // of the command line.
-            bail!(
+            anyhow::bail!(
                 "The list of Anneal entry points for package '{}' is too large ({} bytes). \n\
                  This exceeds safe OS command-line limits.",
                 artifact.name.package_name,
@@ -133,20 +133,19 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
 
         cmd.arg("--start-from").arg(start_from_str);
 
-        // Separator for the underlying cargo command
+        // Separator for the underlying cargo command.
         cmd.arg("--");
 
-        // Ensure cargo emits json msgs which charon-driver natively generates
+        // Ensure cargo emits json msgs which charon-driver natively generates.
         cmd.arg("--message-format=json");
 
         cmd.arg("--manifest-path").arg(&artifact.manifest_path);
 
-        use AnnealTargetKind::*;
         match artifact.target_kind {
-            Lib | RLib | ProcMacro | CDyLib | DyLib | StaticLib => cmd.arg("--lib"),
-            Bin => cmd.args(["--bin", &artifact.name.target_name]),
-            Example => cmd.args(["--example", &artifact.name.target_name]),
-            Test => cmd.args(["--test", &artifact.name.target_name]),
+            crate::resolve::AnnealTargetKind::Lib | crate::resolve::AnnealTargetKind::RLib | crate::resolve::AnnealTargetKind::ProcMacro | crate::resolve::AnnealTargetKind::CDyLib | crate::resolve::AnnealTargetKind::DyLib | crate::resolve::AnnealTargetKind::StaticLib => cmd.arg("--lib"),
+            crate::resolve::AnnealTargetKind::Bin => cmd.args(["--bin", &artifact.name.target_name]),
+            crate::resolve::AnnealTargetKind::Example => cmd.args(["--example", &artifact.name.target_name]),
+            crate::resolve::AnnealTargetKind::Test => cmd.args(["--test", &artifact.name.target_name]),
         };
 
         // Forward all feature-related flags.
@@ -160,91 +159,55 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
             cmd.arg("--features").arg(feature);
         }
 
-        // Reuse the main target directory for dependencies to save time.
+        // We share `CARGO_TARGET_DIR` (`target/anneal/cargo_target`) across all
+        // Charon invocations to enable Cargo's incremental build cache. This
+        // prevents Cargo from recompiling identical workspace dependencies from
+        // scratch for each individual target, saving significant compilation time.
         cmd.env("CARGO_TARGET_DIR", roots.cargo_target_dir());
 
-        log::debug!("Command: {:?}", cmd);
+        log::debug!("Executing charon command: {:?}", cmd);
 
-        cmd.stdout(std::process::Stdio::piped());
-        cmd.stderr(std::process::Stdio::piped());
         let start = std::time::Instant::now();
-        let mut child = cmd.spawn().context("Failed to spawn charon")?;
-
-        let mut output_error = false;
-
-        let safety_buffer = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-        let safety_buffer_clone = std::sync::Arc::clone(&safety_buffer);
+        let output_error = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let output_error_clone = std::sync::Arc::clone(&output_error);
 
         // Charon's standard error stream contains unstructured diagnostic
         // output (such as panic messages from build scripts or ICEs). We
-        // dedicate a background thread to drain this stream into a
-        // thread-safe safety buffer. This ensures that even if Charon aborts
+        // collect this in a safety buffer to ensure that even if Charon aborts
         // unexpectedly, the user receives the complete unstructured output
         // instead of a generic "silent death".
-        let mut stderr_thread = None;
-        if let Some(stderr) = child.stderr.take() {
-            stderr_thread = Some(std::thread::spawn(move || {
-                use std::io::{BufRead, BufReader};
-                let reader = BufReader::new(stderr);
-                for line in reader.lines().map_while(Result::ok) {
-                    safety_buffer_clone.lock().unwrap().push(line);
-                }
-            }));
-        }
+        let safety_buffer = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let safety_buffer_clone = std::sync::Arc::clone(&safety_buffer);
 
-        let pb = indicatif::ProgressBar::new_spinner();
-        pb.set_style(
-            indicatif::ProgressStyle::default_spinner().template("{spinner:.green} {msg}").unwrap(),
-        );
-        pb.enable_steady_tick(std::time::Duration::from_millis(100));
-        pb.set_message("Compiling...");
+        let mut mapper = crate::diagnostics::DiagnosticMapper::new(roots.workspace().clone());
 
-        if let Some(stdout) = child.stdout.take() {
-            let reader = BufReader::new(stdout);
-
-            let mut mapper = crate::diagnostics::DiagnosticMapper::new(roots.workspace().clone());
-            for line in reader.lines().map_while(Result::ok) {
-                if let Ok(msg) = serde_json::from_str::<cargo_metadata::Message>(&line) {
-                    match msg {
-                        Message::CompilerArtifact(a) => {
-                            pb.set_message(format!("Compiling {}", a.target.name));
-                        }
-                        Message::CompilerMessage(msg) => {
-                            pb.suspend(|| {
-                                mapper.render_miette(&msg.message, |s| eprintln!("{}", s));
-                            });
-                            if matches!(
-                                msg.message.level,
-                                DiagnosticLevel::Error | DiagnosticLevel::Ice
-                            ) {
-                                output_error = true;
-                            }
-                        }
-                        Message::TextLine(t) => {
-                            safety_buffer.lock().unwrap().push(t);
-                        }
-                        _ => {}
+        let res = crate::util::run_command_with_progress(cmd, "Compiling...", move |line, pb| {
+            if let Ok(msg) = serde_json::from_str::<cargo_metadata::Message>(line) {
+                match msg {
+                    cargo_metadata::Message::CompilerArtifact(a) => {
+                        pb.set_message(format!("Compiling {}", a.target.name));
                     }
-                } else {
-                    safety_buffer.lock().unwrap().push(line);
+                    cargo_metadata::Message::CompilerMessage(msg) => {
+                        pb.suspend(|| {
+                            mapper.render_miette(&msg.message, |s| eprintln!("{}", s));
+                        });
+                        if matches!(
+                            msg.message.level,
+                            cargo_metadata::diagnostic::DiagnosticLevel::Error | cargo_metadata::diagnostic::DiagnosticLevel::Ice
+                        ) {
+                            output_error_clone.store(true, std::sync::atomic::Ordering::Relaxed);
+                        }
+                    }
+                    cargo_metadata::Message::TextLine(t) => {
+                        safety_buffer_clone.lock().unwrap().push(t);
+                    }
+                    _ => {}
                 }
+            } else {
+                safety_buffer_clone.lock().unwrap().push(line.to_string());
             }
-        }
-
-        pb.finish_and_clear();
-
-        let status = child.wait().context("Failed to wait for charon")?;
-
-        // The main thread has finished reading the structured JSON output from
-        // Charon's standard output stream, and the Charon process itself has
-        // exited. However, we must explicitly wait for the background thread
-        // to finish draining the standard error stream. Failing to join this
-        // thread introduces a race condition where the main thread might
-        // inspect the `safety_buffer` before the background thread has
-        // finished appending the final error messages from the dying process.
-        if let Some(thread) = stderr_thread {
-            let _ = thread.join();
-        }
+            Ok(())
+        })?;
 
         log::trace!("Charon for '{}' took {:.2?}", artifact.name.package_name, start.elapsed());
 
@@ -253,14 +216,18 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
         // print won't include all relevant information – some will be printed
         // via stderr. In this case, `output_error = true` and so we bail and
         // discard stderr, which will swallow information from the user.
-        if output_error {
-            bail!("Diagnostic error in charon");
-        } else if !status.success() {
-            // "Silent Death" dump
+        if output_error.load(std::sync::atomic::Ordering::Relaxed) {
+            anyhow::bail!("Diagnostic error in charon");
+        } else if !res.status.success() {
+            // "Silent Death" dump.
             for line in safety_buffer.lock().unwrap().iter() {
                 eprintln!("{}", line);
             }
-            bail!("Charon failed with status: {}", status);
+            // Also dump the dynamic linker errors or panic messages captured in stderr.
+            for line in &res.stderr_lines {
+                eprintln!("{}", line);
+            }
+            anyhow::bail!("Charon failed with status: {}", res.status);
         }
     }
 
@@ -277,9 +244,6 @@ mod tests {
 
     #[test]
     fn test_run_charon_simple() {
-        // We must set __ANNEAL_LOCAL_DEV=1 so that it finds the toolchain in the local target directory.
-        unsafe { std::env::set_var("__ANNEAL_LOCAL_DEV", "1"); }
-
         // 1. Create a temporary directory
         let temp_dir = tempfile::tempdir().unwrap();
         let proj_dir = temp_dir.path().join("test_proj");
@@ -324,8 +288,14 @@ mod tests {
         // 7. Lock run root
         let locked_roots = roots.lock_run_root().unwrap();
 
-        // 8. Run charon
-        let res = run_charon(&args, &locked_roots, &packages);
+        // 8. Resolve test-only stripped toolchain and run charon
+        let toolchain_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("toolchains")
+            .join("charon-only");
+        let toolchain = crate::setup::Toolchain::new_test(toolchain_root);
+
+        let res = run_charon(&args, &locked_roots, &packages, &toolchain);
         assert!(res.is_ok(), "charon failed: {:?}", res.err());
 
         // 9. Verify .llbc file exists

@@ -1,19 +1,11 @@
 // Handling of Lean diagnostics and error mapping.
 //
-// This module provides the `DiagnosticMapper` struct, which is responsible
+// This module provides the [`crate::diagnostics::DiagnosticMapper`] struct, which is responsible
 // for translating diagnostics from external tools (like Lean or Charon) back
 // to the original Rust source code. It maps errors in generated files back to
 // their origin spans in the user's codebase.
 
-use std::{
-    collections::HashMap,
-    fs,
-    path::{Component, Path, PathBuf},
-};
-
 pub use cargo_metadata::diagnostic::{Diagnostic, DiagnosticLevel, DiagnosticSpan};
-use miette::{NamedSource, Report, SourceOffset};
-use thiserror::Error;
 
 /// Maps diagnostics from generated intermediate code back to pristine,
 /// original source code files.
@@ -24,19 +16,19 @@ use thiserror::Error;
 /// To create a first-class user experience, this mapper actively
 /// cross-references Lean's emitted byte spans against the sidecar
 /// `SourceMapping`s built by `src/generate.rs`, dynamically synthesizing a
-/// `miette::NamedSource` that points directly into the user's actual `.rs`
+/// [`miette::NamedSource`] that points directly into the user's actual `.rs`
 /// workspace files.
 pub struct DiagnosticMapper {
-    user_root: PathBuf,
-    user_root_canonical: PathBuf,
-    source_cache: HashMap<PathBuf, String>,
+    user_root: std::path::PathBuf,
+    user_root_canonical: std::path::PathBuf,
+    source_cache: std::collections::HashMap<std::path::PathBuf, String>,
 }
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[error("{message}")]
 struct MappedError {
     message: String,
-    src: NamedSource<String>,
+    src: miette::NamedSource<String>,
     labels: Vec<miette::LabeledSpan>,
     help: Option<String>,
     related: Vec<MappedError>,
@@ -48,7 +40,7 @@ impl miette::Diagnostic for MappedError {
         Some(&self.src)
     }
 
-    fn labels(&self) -> Option<Box<dyn Iterator<Item = miette::LabeledSpan> + '_>> {
+    fn labels(&self) -> Option<Box<dyn std::iter::Iterator<Item = miette::LabeledSpan> + '_>> {
         if self.labels.is_empty() { None } else { Some(Box::new(self.labels.iter().cloned())) }
     }
 
@@ -56,7 +48,7 @@ impl miette::Diagnostic for MappedError {
         self.help.as_ref().map(|h| Box::new(h.clone()) as Box<dyn std::fmt::Display>)
     }
 
-    fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
+    fn related<'a>(&'a self) -> Option<Box<dyn std::iter::Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
         if self.related.is_empty() {
             None
         } else {
@@ -72,46 +64,46 @@ impl miette::Diagnostic for MappedError {
 
 impl DiagnosticMapper {
     /// Creates a new mapper rooted at `user_root`.
-    pub fn new(user_root: PathBuf) -> Self {
+    pub fn new(user_root: std::path::PathBuf) -> Self {
         let user_root_canonical =
-            fs::canonicalize(&user_root).unwrap_or_else(|_| user_root.clone());
-        Self { user_root, user_root_canonical, source_cache: HashMap::new() }
+            std::fs::canonicalize(&user_root).unwrap_or_else(|_| user_root.clone());
+        Self { user_root, user_root_canonical, source_cache: std::collections::HashMap::new() }
     }
 
     /// Resolves a path relative to the user root, if applicable.
     ///
     /// This ensures we only report diagnostics for files within the user's
     /// workspace, avoiding noise from dependencies or system files.
-    pub fn map_path(&self, path: &Path) -> Option<PathBuf> {
+    pub fn map_path(&self, path: &std::path::Path) -> Option<std::path::PathBuf> {
         let mut p = path.to_path_buf();
         if p.is_relative() {
             p = self.user_root.join(p);
         }
 
         p = {
-            let mut normalized = PathBuf::new();
+            let mut normalized = std::path::PathBuf::new();
             for component in p.components() {
                 let most_recent = normalized.components().next_back();
                 match (component, most_recent) {
-                    (Component::ParentDir, Some(Component::Normal(_))) => {
+                    (std::path::Component::ParentDir, Some(std::path::Component::Normal(_))) => {
                         normalized.pop();
                     }
-                    (Component::CurDir, _) => {}
+                    (std::path::Component::CurDir, _) => {}
                     _ => normalized.push(component),
                 }
             }
             normalized
         };
 
-        // Strategy B: Starts with user_root or user_root_canonical
+        // Strategy B: Starts with user_root or user_root_canonical.
         (p.starts_with(&self.user_root) || p.starts_with(&self.user_root_canonical)).then_some(p)
     }
 
-    fn get_source(&mut self, path: &Path) -> Option<String> {
+    fn get_source(&mut self, path: &std::path::Path) -> Option<String> {
         if let Some(src) = self.source_cache.get(path) {
             return Some(src.clone());
         }
-        if let Ok(src) = fs::read_to_string(path) {
+        if let Ok(src) = std::fs::read_to_string(path) {
             self.source_cache.insert(path.to_path_buf(), src.clone());
             Some(src)
         } else {
@@ -128,11 +120,11 @@ impl DiagnosticMapper {
     where
         F: FnMut(String),
     {
-        let mut mapped_paths_and_spans: HashMap<PathBuf, Vec<&DiagnosticSpan>> = HashMap::new();
+        let mut mapped_paths_and_spans: std::collections::HashMap<std::path::PathBuf, Vec<&DiagnosticSpan>> = std::collections::HashMap::new();
 
-        // 1) Group spans by mapped path
+        // 1) Group spans by mapped path.
         for s in &diag.spans {
-            let p = PathBuf::from(&s.file_name);
+            let p = std::path::PathBuf::from(&s.file_name);
             if let Some(mapped_path) = self.map_path(&p) {
                 mapped_paths_and_spans.entry(mapped_path).or_default().push(s);
             }
@@ -152,14 +144,14 @@ impl DiagnosticMapper {
                 .spans
                 .iter()
                 .find(|s| s.is_primary)
-                .and_then(|s| self.map_path(&PathBuf::from(&s.file_name)))
+                .and_then(|s| self.map_path(&std::path::PathBuf::from(&s.file_name)))
                 .or_else(|| mapped_paths_and_spans.keys().next().cloned());
 
             if let Some(main_path) = primary_path {
                 let mut all_errors = Vec::new();
 
-                // Sort the paths to have the primary path first
-                let mut paths: Vec<PathBuf> = mapped_paths_and_spans.keys().cloned().collect();
+                // Sort the paths to have the primary path first.
+                let mut paths: Vec<std::path::PathBuf> = mapped_paths_and_spans.keys().cloned().collect();
                 paths.sort_by_key(|p| p != &main_path);
 
                 for p in paths {
@@ -173,7 +165,7 @@ impl DiagnosticMapper {
                                 let start: usize = s.byte_start.try_into().unwrap();
                                 let len = (s.byte_end - s.byte_start).try_into().unwrap();
                                 (start <= src.len() && start + len <= src.len()).then(|| {
-                                    let offset = SourceOffset::from(start);
+                                    let offset = miette::SourceOffset::from(start);
                                     miette::LabeledSpan::new(Some(label_text), offset.offset(), len)
                                 })
                             })
@@ -185,7 +177,7 @@ impl DiagnosticMapper {
                             } else {
                                 format!("related to: {}", p.display())
                             },
-                            src: NamedSource::new(p.to_string_lossy(), src),
+                            src: miette::NamedSource::new(p.to_string_lossy(), src),
                             labels,
                             help: if p == main_path { help_msg.clone() } else { None },
                             related: Vec::new(),
@@ -204,13 +196,13 @@ impl DiagnosticMapper {
                 if !all_errors.is_empty() {
                     let mut main_err = all_errors.remove(0);
                     main_err.related = all_errors;
-                    printer(format!("{:?}", Report::new(main_err)));
+                    printer(format!("{:?}", miette::Report::new(main_err)));
                     return;
                 }
             }
         }
 
-        // If we get here, no span was successfully mapped
+        // If we get here, no span was successfully mapped.
         let prefix = match diag.level {
             DiagnosticLevel::Error | DiagnosticLevel::Ice => "[External Error]",
             DiagnosticLevel::Warning => "[External Warning]",
@@ -224,7 +216,7 @@ impl DiagnosticMapper {
         }
     }
 
-    /// Renders a raw diagnostic (e.g., from Lean) directly at a mapped byte
+    /// Renders a diagnostic (e.g., from Lean) directly at a mapped byte
     /// range.
     ///
     /// The fundamental workflow for an external error is:
@@ -246,7 +238,7 @@ impl DiagnosticMapper {
     ) where
         F: FnMut(String),
     {
-        let p = PathBuf::from(file_name);
+        let p = std::path::PathBuf::from(file_name);
         if let Some(mapped_path) = self.map_path(&p)
             && let Some(src) = self.get_source(&mapped_path)
         {
@@ -254,12 +246,12 @@ impl DiagnosticMapper {
             if byte_end >= start {
                 let len = byte_end - start;
                 if start <= src.len() && start + len <= src.len() {
-                    let offset = SourceOffset::from(start);
+                    let offset = miette::SourceOffset::from(start);
                     let label =
                         miette::LabeledSpan::new(Some("here".to_string()), offset.offset(), len);
                     let err = MappedError {
                         message,
-                        src: NamedSource::new(mapped_path.to_string_lossy(), src),
+                        src: miette::NamedSource::new(mapped_path.to_string_lossy(), src),
                         labels: vec![label],
                         help: None,
                         related: Vec::new(),
@@ -271,13 +263,13 @@ impl DiagnosticMapper {
                             _ => Some(miette::Severity::Advice),
                         },
                     };
-                    printer(format!("{:?}", Report::new(err)));
+                    printer(format!("{:?}", miette::Report::new(err)));
                     return;
                 }
             }
         }
 
-        // Fallback
+        // Fallback.
         let prefix = match level {
             DiagnosticLevel::Error | DiagnosticLevel::Ice => "[External Error]",
             DiagnosticLevel::Warning => "[External Warning]",
@@ -297,7 +289,7 @@ mod tests {
         let user_root = temp.path().join("workspace");
         std::fs::create_dir(&user_root).unwrap();
 
-        // Create a symlink in the workspace pointing outside
+        // Create a symlink in the workspace pointing outside.
         let outside = temp.path().join("outside");
         std::fs::create_dir(&outside).unwrap();
         std::os::unix::fs::symlink(&outside, user_root.join("symlink")).unwrap();

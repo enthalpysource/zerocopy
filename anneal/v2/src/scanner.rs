@@ -1,25 +1,18 @@
-use std::collections::HashSet;
-use std::path::PathBuf;
-use sha2::{Digest as _, Sha256};
-
-use crate::{
-    parse::ParsedLeanItem,
-    resolve::{AnnealTargetKind, AnnealTargetName, LockedRoots},
-};
+use sha2::Digest as _;
 
 pub struct AnnealArtifact {
-    pub name: AnnealTargetName,
-    pub target_kind: AnnealTargetKind,
+    pub name: crate::resolve::AnnealTargetName,
+    pub target_kind: crate::resolve::AnnealTargetKind,
     /// The path to the crate's `Cargo.toml`.
-    pub manifest_path: PathBuf,
-    pub items: Vec<ParsedLeanItem<crate::parse::hkd::Safe>>,
+    pub manifest_path: std::path::PathBuf,
+    pub items: Vec<crate::parse::ParsedLeanItem<crate::parse::hkd::Safe>>,
     // NOTE: We store `start_from` as a `HashSet` rather than a `Vec` as an
     // optimization: when we encounter items which we can't name (which carry
     // Anneal annotations), we add their parent module to the list of
     // entrypoints. If there are multiple items in the same module, this can
     // lead to duplication in the list of entrypoints. Storing them in a
     // `HashSet` avoids us having to de-dup later.
-    pub start_from: HashSet<String>,
+    pub start_from: std::collections::HashSet<String>,
 }
 
 impl AnnealArtifact {
@@ -31,7 +24,7 @@ impl AnnealArtifact {
     /// identifier (no hyphens).
     pub fn artifact_slug(&self) -> String {
         fn hash(data: &[u8]) -> u64 {
-            let mut hasher = Sha256::new();
+            let mut hasher = sha2::Sha256::new();
             hasher.update(data);
             let result = hasher.finalize();
             let mut bytes = [0u8; 8];
@@ -43,7 +36,7 @@ impl AnnealArtifact {
         // (manifest_path, target_name) = ("abc", "def") and ("ab", "cdef"),
         // which would hash identically if we just hashed their concatenation.
         //
-        // Use SHA-256 not for security but rather stability – Rust's
+        // Use SHA-256 not for security but rather stability – Rust's
         // `DefaultHasher` doesn't guarantee stability even across runs of the
         // same binary.
         //
@@ -98,9 +91,9 @@ impl AnnealArtifact {
 
     /// Returns the absolute path to the .llbc file.
     ///
-    /// This method requires `LockedRoots` to ensure that the caller holds the
+    /// This method requires [`crate::resolve::LockedRoots`] to ensure that the caller holds the
     /// build lock before accessing the build artifact path.
-    pub fn llbc_path(&self, roots: &LockedRoots) -> PathBuf {
+    pub fn llbc_path(&self, roots: &crate::resolve::LockedRoots) -> std::path::PathBuf {
         roots.llbc_root().join(self.llbc_file_name())
     }
 }
@@ -127,7 +120,7 @@ pub fn scan_workspace(roots: &crate::resolve::Roots) -> anyhow::Result<Vec<Annea
             }
         }
 
-        // If we found nothing, but it's a bin, assume `main`
+        // If we found nothing, but it's a bin, assume `main`.
         if start_from.is_empty() && target.kind == crate::resolve::AnnealTargetKind::Bin {
             start_from.insert("crate::main".to_string());
         }
@@ -136,7 +129,7 @@ pub fn scan_workspace(roots: &crate::resolve::Roots) -> anyhow::Result<Vec<Annea
             name: target.name.clone(),
             target_kind: target.kind,
             manifest_path: target.manifest_path.clone(),
-            items: vec![], // empty for now
+            items: vec![], // Empty for now.
             start_from,
         });
     }

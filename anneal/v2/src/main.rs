@@ -17,7 +17,7 @@ mod scanner;
 mod charon;
 mod setup;
 
-/// Anneal: A Literate Verification Toolchain
+/// Anneal: A Literate Verification Toolchain.
 #[derive(clap::Parser, Debug)]
 #[command(name = "cargo-anneal", version, about, long_about = None)]
 struct Cli {
@@ -27,10 +27,13 @@ struct Cli {
 
 #[derive(clap::Subcommand, Debug)]
 enum Commands {
-    /// Setup Anneal dependencies
+    /// Setup Anneal dependencies.
     Setup(SetupArgs),
-    /// Expand a crate (runs Charon)
+    /// Expand a crate (runs Charon).
     Expand(ExpandArgs),
+    /// Setup test-only stripped toolchain (dev only).
+    #[cfg(feature = "exocrate_tests")]
+    TestSetup,
 }
 
 #[derive(clap::Parser, Debug)]
@@ -43,7 +46,7 @@ pub struct SetupArgs {
 #[derive(clap::Parser, Debug)]
 pub struct ExpandArgs {
     #[command(flatten)]
-    pub resolve_args: resolve::Args,
+    pub resolve_args: crate::resolve::Args,
 
     /// Controls where LLBC output is placed on the filesystem.
     #[arg(long, value_name = "output-dir")]
@@ -51,15 +54,15 @@ pub struct ExpandArgs {
 }
 
 fn setup(args: SetupArgs) {
-    setup::run_setup(setup::SetupArgs {
+    crate::setup::run_setup(crate::setup::SetupArgs {
         local_archive: args.local_archive,
     })
     .expect("failed to setup toolchain");
 }
 
 fn expand(args: ExpandArgs) -> anyhow::Result<()> {
-    let roots = resolve::resolve_roots(&args.resolve_args)?;
-    let packages = scanner::scan_workspace(&roots)?;
+    let roots = crate::resolve::resolve_roots(&args.resolve_args)?;
+    let packages = crate::scanner::scan_workspace(&roots)?;
     if packages.is_empty() {
         log::warn!("No targets found to expand.");
         return Ok(());
@@ -68,7 +71,8 @@ fn expand(args: ExpandArgs) -> anyhow::Result<()> {
     if let Some(output_dir) = args.output_dir {
         locked_roots.llbc_override = Some(output_dir);
     }
-    charon::run_charon(&args.resolve_args, &locked_roots, &packages)?;
+    let toolchain = crate::setup::Toolchain::resolve()?;
+    crate::charon::run_charon(&args.resolve_args, &locked_roots, &packages, &toolchain)?;
     Ok(())
 }
 
@@ -93,12 +97,18 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        #[cfg(feature = "exocrate_tests")]
+        Commands::TestSetup => {
+            if let Err(e) = crate::setup::run_test_setup() {
+                eprintln!("TestSetup failed: {:?}", e);
+                std::process::exit(1);
+            }
+        }
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "exocrate_tests"))]
 mod tests {
-    #[cfg(feature = "exocrate_tests")]
     #[test]
     fn test_setup() {
         super::setup(super::SetupArgs {
