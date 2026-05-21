@@ -50,13 +50,28 @@ pub fn run_charon(
     // Global print mutex to prevent interleaved printing of consolidated artifact buffers.
     let print_mutex = std::sync::Arc::new(std::sync::Mutex::new(()));
 
-    // Determine if we should show progress bar.
-    let show_progress = show_progress && packages.len() == 1;
+    // Initialize MultiProgress if progress is enabled.
+    let mp = if show_progress {
+        Some(std::sync::Arc::new(indicatif::MultiProgress::new()))
+    } else {
+        None
+    };
 
     packages.par_iter().try_for_each(|artifact| {
         if artifact.start_from.is_empty() {
             return Ok(());
         }
+
+        let pb = mp.as_ref().map(|m| {
+            let pb = m.add(indicatif::ProgressBar::new_spinner());
+            pb.set_style(
+                indicatif::ProgressStyle::default_spinner()
+                    .template("{spinner:.green} {msg}")
+                    .unwrap(),
+            );
+            pb.set_message("Compiling...");
+            pb
+        });
 
         log::info!("Invoking Charon on package '{}'...", artifact.name.package_name);
 
@@ -185,9 +200,8 @@ pub fn run_charon(
 
         let mut mapper = crate::diagnostics::DiagnosticMapper::new(roots.workspace().clone());
 
-        let progress_msg = if show_progress { Some("Compiling...") } else { None };
-
-        let res = crate::util::run_command_with_progress(cmd, progress_msg, move |line, pb| {
+        let pb_clone = pb.clone();
+        let res = crate::util::run_command_with_progress(cmd, pb_clone, move |line, pb| {
             if let Ok(msg) = serde_json::from_str::<cargo_metadata::Message>(line) {
                 match msg {
                     cargo_metadata::Message::CompilerArtifact(a) => {
@@ -203,7 +217,8 @@ pub fn run_charon(
                         }
                         if matches!(
                             msg.message.level,
-                            cargo_metadata::diagnostic::DiagnosticLevel::Error | cargo_metadata::diagnostic::DiagnosticLevel::Ice
+                            cargo_metadata::diagnostic::DiagnosticLevel::Error
+                                | cargo_metadata::diagnostic::DiagnosticLevel::Ice
                         ) {
                             output_error_clone.store(true, std::sync::atomic::Ordering::Relaxed);
                         }
@@ -257,15 +272,14 @@ pub fn run_charon(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use crate::resolve::{Args, resolve_roots};
     use crate::scanner::scan_workspace;
     use clap::Parser as _;
+    use std::fs;
 
+    #[cfg(feature = "exocrate_tests")]
     #[test]
     fn test_run_charon_simple() {
-        // The test environment disables progress bar via configuration injection.
-
         // 1. Create a temporary directory.
         let temp_dir = tempfile::tempdir().unwrap();
         let proj_dir = temp_dir.path().join("test_proj");
@@ -297,7 +311,8 @@ mod tests {
             "cargo-anneal",
             "--manifest-path",
             proj_dir.join("Cargo.toml").to_str().unwrap(),
-        ]).unwrap();
+        ])
+        .unwrap();
 
         // 5. Resolve roots.
         let roots = resolve_roots(&args).unwrap();
@@ -310,20 +325,20 @@ mod tests {
         // 7. Lock run root.
         let locked_roots = roots.lock_run_root().unwrap();
 
-        // 8. Resolve test-only stripped toolchain and run charon.
-        let toolchain_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
-            .join("toolchains")
-            .join("charon-only");
-        let toolchain = crate::setup::Toolchain::new_test(toolchain_root);
+        // 8. Resolve standard developer toolchain and run charon.
+        let toolchain = crate::setup::Toolchain::resolve().expect("Failed to resolve toolchain");
 
-        let res = run_charon(&args, &toolchain, &locked_roots, &packages, false);
+        let res = run_charon(
+            &args,
+            &toolchain,
+            &locked_roots,
+            &packages,
+            false, // show_progress
+        );
         assert!(res.is_ok(), "charon failed: {:?}", res.err());
 
         // 9. Verify .llbc file exists.
         let llbc_path = packages[0].llbc_path(&locked_roots);
         assert!(llbc_path.exists(), "llbc file not found at {:?}", llbc_path);
-
-
     }
 }

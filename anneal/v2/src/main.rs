@@ -9,13 +9,13 @@
 
 use clap::Parser as _;
 
-mod util;
-mod diagnostics;
-mod resolve;
-mod parse;
-mod scanner;
 mod charon;
+mod diagnostics;
+mod parse;
+mod resolve;
+mod scanner;
 mod setup;
+mod util;
 
 /// Anneal: A Literate Verification Toolchain
 #[derive(clap::Parser, Debug)]
@@ -31,12 +31,19 @@ enum Commands {
     Setup(SetupArgs),
     /// Expand a crate (runs Charon)
     Expand(ExpandArgs),
-    /// Setup test-only stripped toolchain (dev only)
-    ///
-    /// FIXME: Add GitHub actions that will block changes that would update
-    /// tests/toolchains/ files if TestSetup were invoked without committing them.
+
+    /// Helper to acquire shared or exclusive locks for multi-process integration testing (dev only)
     #[cfg(feature = "exocrate_tests")]
-    TestSetup,
+    TestLockHelper {
+        #[arg(long)]
+        role: String,
+        #[arg(long)]
+        lock_dir: std::path::PathBuf,
+        #[arg(long)]
+        log_file: std::path::PathBuf,
+        #[arg(long)]
+        sig_file: std::path::PathBuf,
+    },
 }
 
 #[derive(clap::Parser, Debug)]
@@ -54,13 +61,15 @@ pub struct ExpandArgs {
     /// Controls where LLBC output is placed on the filesystem
     #[arg(long, value_name = "output-dir")]
     pub output_dir: Option<std::path::PathBuf>,
+
+    /// Do not show compilation progress bars
+    #[arg(long)]
+    pub no_progress: bool,
 }
 
 fn setup(args: SetupArgs) {
-    crate::setup::run_setup(crate::setup::SetupArgs {
-        local_archive: args.local_archive,
-    })
-    .expect("failed to setup toolchain");
+    crate::setup::run_setup(crate::setup::SetupArgs { local_archive: args.local_archive })
+        .expect("failed to setup toolchain");
 }
 
 fn expand(args: ExpandArgs) -> anyhow::Result<()> {
@@ -75,8 +84,14 @@ fn expand(args: ExpandArgs) -> anyhow::Result<()> {
         locked_roots.llbc_override = Some(output_dir);
     }
     let toolchain = crate::setup::Toolchain::resolve()?;
-    let show_progress = std::env::var("ANNEAL_NO_PROGRESS").is_err();
-    crate::charon::run_charon(&args.resolve_args, &toolchain, &locked_roots, &packages, show_progress)?;
+    let show_progress = !args.no_progress;
+    crate::charon::run_charon(
+        &args.resolve_args,
+        &toolchain,
+        &locked_roots,
+        &packages,
+        show_progress,
+    )?;
     Ok(())
 }
 
@@ -101,10 +116,13 @@ fn main() {
                 std::process::exit(1);
             }
         }
+
         #[cfg(feature = "exocrate_tests")]
-        Commands::TestSetup => {
-            if let Err(e) = crate::setup::run_test_setup() {
-                eprintln!("TestSetup failed: {:?}", e);
+        Commands::TestLockHelper { role, lock_dir, log_file, sig_file } => {
+            if let Err(e) =
+                crate::util::run_test_lock_helper(&role, &lock_dir, &log_file, &sig_file)
+            {
+                eprintln!("TestLockHelper failed: {:?}", e);
                 std::process::exit(1);
             }
         }
@@ -116,8 +134,7 @@ mod tests {
     #[cfg(feature = "exocrate_tests")]
     #[test]
     fn test_setup_and_toolchain_paths() {
-        // 1. Run setup (this compiles dependencies and installs them locally to target/.anneal
-        // because __ANNEAL_LOCAL_DEV=1 is defined in our .cargo/config.toml!).
+        // 1. Run setup.
         super::setup(super::SetupArgs {
             // ASSUMPTION: Dependency builder installs archive at
             // `target/anneal-exocrate.tar.zst`.
@@ -128,10 +145,29 @@ mod tests {
         let toolchain = crate::setup::Toolchain::resolve().expect("Failed to resolve toolchain");
 
         // 3. Verify that all returned paths exist as directories.
+        // Note: these assertions would be more appropriate in the setup.rs module,
+        // but including them here avoids introducing multiple tests that attempt to
+        // extract the (large) anneal exocrate archive.
         assert!(toolchain.root().is_dir(), "root is not a directory: {:?}", toolchain.root());
-        assert!(toolchain.aeneas_bin_dir().is_dir(), "aeneas_bin_dir is not a directory: {:?}", toolchain.aeneas_bin_dir());
-        assert!(toolchain.rust_sysroot().is_dir(), "rust_sysroot is not a directory: {:?}", toolchain.rust_sysroot());
-        assert!(toolchain.rust_bin().is_dir(), "rust_bin is not a directory: {:?}", toolchain.rust_bin());
-        assert!(toolchain.rust_lib().is_dir(), "rust_lib is not a directory: {:?}", toolchain.rust_lib());
+        assert!(
+            toolchain.aeneas_bin_dir().is_dir(),
+            "aeneas_bin_dir is not a directory: {:?}",
+            toolchain.aeneas_bin_dir()
+        );
+        assert!(
+            toolchain.rust_sysroot().is_dir(),
+            "rust_sysroot is not a directory: {:?}",
+            toolchain.rust_sysroot()
+        );
+        assert!(
+            toolchain.rust_bin().is_dir(),
+            "rust_bin is not a directory: {:?}",
+            toolchain.rust_bin()
+        );
+        assert!(
+            toolchain.rust_lib().is_dir(),
+            "rust_lib is not a directory: {:?}",
+            toolchain.rust_lib()
+        );
     }
 }

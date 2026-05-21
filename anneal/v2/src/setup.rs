@@ -84,11 +84,6 @@ impl Toolchain {
     pub fn command(&self, tool: Tool) -> std::process::Command {
         std::process::Command::new(tool.path(self))
     }
-
-    #[cfg(test)]
-    pub fn new_test(root: std::path::PathBuf) -> Self {
-        Self { root }
-    }
 }
 
 pub fn run_setup(args: SetupArgs) -> anyhow::Result<()> {
@@ -108,69 +103,3 @@ pub fn run_setup(args: SetupArgs) -> anyhow::Result<()> {
     log::info!("anneal toolchain is installed at {:?}", installation_dir);
     Ok(())
 }
-
-#[cfg(feature = "exocrate_tests")]
-pub fn run_test_setup() -> anyhow::Result<()> {
-    log::debug!("Running standard setup...");
-    run_setup(SetupArgs {
-        local_archive: Some("target/anneal-exocrate.tar.zst".into()),
-    })?;
-
-    let toolchain = Toolchain::resolve()?;
-    let dest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("toolchains")
-        .join("charon-only");
-
-    if dest_dir.exists() {
-        log::debug!("Cleaning existing test toolchain at {:?}", dest_dir);
-        std::fs::remove_dir_all(&dest_dir).context("Failed to clean test toolchain dir")?;
-    }
-    std::fs::create_dir_all(&dest_dir)?;
-
-    let copy_file = |src: &std::path::Path, dest: &std::path::Path| -> anyhow::Result<()> {
-        if let Some(parent) = dest.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::copy(src, dest)?;
-        let meta = std::fs::metadata(src)?;
-        std::fs::set_permissions(dest, meta.permissions())?;
-        Ok(())
-    };
-
-    log::debug!("Copying Charon binaries...");
-    copy_file(
-        &toolchain.aeneas_bin_dir().join("charon"),
-        &dest_dir.join("aeneas").join("bin").join("charon"),
-    )?;
-    copy_file(
-        &toolchain.aeneas_bin_dir().join("charon-driver"),
-        &dest_dir.join("aeneas").join("bin").join("charon-driver"),
-    )?;
-
-    log::debug!("Copying rustc binary...");
-    copy_file(
-        &toolchain.rust_bin().join("rustc"),
-        &dest_dir.join("rust").join("bin").join("rustc"),
-    )?;
-
-    log::debug!("Copying rust libraries (this may take a while)...");
-    let src_lib = toolchain.rust_lib();
-    let dest_lib = dest_dir.join("rust").join("lib");
-    
-    for entry in walkdir::WalkDir::new(&src_lib) {
-        let entry = entry?;
-        let rel_path = entry.path().strip_prefix(&src_lib)?;
-        let dest_path = dest_lib.join(rel_path);
-        if entry.file_type().is_dir() {
-            std::fs::create_dir_all(&dest_path)?;
-        } else {
-            copy_file(entry.path(), &dest_path)?;
-        }
-    }
-
-    log::debug!("Test toolchain successfully set up at {:?}", dest_dir);
-    Ok(())
-}
-
-

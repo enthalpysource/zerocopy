@@ -267,7 +267,9 @@ pub fn resolve_roots(args: &Args) -> anyhow::Result<Roots> {
     Ok(roots)
 }
 
-fn resolve_run_roots(metadata: &cargo_metadata::Metadata) -> (std::path::PathBuf, std::path::PathBuf) {
+fn resolve_run_roots(
+    metadata: &cargo_metadata::Metadata,
+) -> (std::path::PathBuf, std::path::PathBuf) {
     log::trace!("resolve_run_root");
     log::debug!("workspace_root: {:?}", metadata.workspace_root.as_std_path());
     // NOTE: Automatically handles `CARGO_TARGET_DIR` env var.

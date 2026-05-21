@@ -48,7 +48,9 @@ impl miette::Diagnostic for MappedError {
         self.help.as_ref().map(|h| Box::new(h.clone()) as Box<dyn std::fmt::Display>)
     }
 
-    fn related<'a>(&'a self) -> Option<Box<dyn std::iter::Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
+    fn related<'a>(
+        &'a self,
+    ) -> Option<Box<dyn std::iter::Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
         if self.related.is_empty() {
             None
         } else {
@@ -120,7 +122,10 @@ impl DiagnosticMapper {
     where
         F: FnMut(String),
     {
-        let mut mapped_paths_and_spans: std::collections::HashMap<std::path::PathBuf, Vec<&DiagnosticSpan>> = std::collections::HashMap::new();
+        let mut mapped_paths_and_spans: std::collections::HashMap<
+            std::path::PathBuf,
+            Vec<&DiagnosticSpan>,
+        > = std::collections::HashMap::new();
 
         // 1) Group spans by mapped path.
         for s in &diag.spans {
@@ -151,7 +156,8 @@ impl DiagnosticMapper {
                 let mut all_errors = Vec::new();
 
                 // Sort the paths to have the primary path first.
-                let mut paths: Vec<std::path::PathBuf> = mapped_paths_and_spans.keys().cloned().collect();
+                let mut paths: Vec<std::path::PathBuf> =
+                    mapped_paths_and_spans.keys().cloned().collect();
                 paths.sort_by_key(|p| p != &main_path);
 
                 for p in paths {
