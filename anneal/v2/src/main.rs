@@ -17,7 +17,7 @@ mod scanner;
 mod charon;
 mod setup;
 
-/// Anneal: A Literate Verification Toolchain.
+/// Anneal: A Literate Verification Toolchain
 #[derive(clap::Parser, Debug)]
 #[command(name = "cargo-anneal", version, about, long_about = None)]
 struct Cli {
@@ -27,18 +27,21 @@ struct Cli {
 
 #[derive(clap::Subcommand, Debug)]
 enum Commands {
-    /// Setup Anneal dependencies.
+    /// Setup Anneal dependencies
     Setup(SetupArgs),
-    /// Expand a crate (runs Charon).
+    /// Expand a crate (runs Charon)
     Expand(ExpandArgs),
-    /// Setup test-only stripped toolchain (dev only).
+    /// Setup test-only stripped toolchain (dev only)
+    ///
+    /// FIXME: Add GitHub actions that will block changes that would update
+    /// tests/toolchains/ files if TestSetup were invoked without committing them.
     #[cfg(feature = "exocrate_tests")]
     TestSetup,
 }
 
 #[derive(clap::Parser, Debug)]
 pub struct SetupArgs {
-    /// Path to a local dependency archive to use instead of downloading.
+    /// Path to a local dependency archive to use instead of downloading
     #[arg(long, value_name = "path-to-local-archive")]
     pub local_archive: Option<std::path::PathBuf>,
 }
@@ -48,7 +51,7 @@ pub struct ExpandArgs {
     #[command(flatten)]
     pub resolve_args: crate::resolve::Args,
 
-    /// Controls where LLBC output is placed on the filesystem.
+    /// Controls where LLBC output is placed on the filesystem
     #[arg(long, value_name = "output-dir")]
     pub output_dir: Option<std::path::PathBuf>,
 }
@@ -72,7 +75,7 @@ fn expand(args: ExpandArgs) -> anyhow::Result<()> {
         locked_roots.llbc_override = Some(output_dir);
     }
     let toolchain = crate::setup::Toolchain::resolve()?;
-    crate::charon::run_charon(&args.resolve_args, &locked_roots, &packages, &toolchain)?;
+    crate::charon::run_charon(&args.resolve_args, &toolchain, &locked_roots, &packages)?;
     Ok(())
 }
 
@@ -107,14 +110,17 @@ fn main() {
     }
 }
 
-#[cfg(all(test, feature = "exocrate_tests"))]
+#[cfg(test)]
 mod tests {
+    #[cfg(feature = "exocrate_tests")]
     #[test]
     fn test_setup() {
+        unsafe { std::env::set_var("__ANNEAL_LOCAL_DEV", "1"); }
         super::setup(super::SetupArgs {
             // ASSUMPTION: Dependency builder installs archive at
             // `target/anneal-exocrate.tar.zst`.
             local_archive: Some("target/anneal-exocrate.tar.zst".into()),
-        })
+        });
+        unsafe { std::env::remove_var("__ANNEAL_LOCAL_DEV"); }
     }
 }

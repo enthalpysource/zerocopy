@@ -18,6 +18,7 @@ fn test_expand_subcommand_simple() {
        .arg(&output_dir);
        
     cmd.env("__ANNEAL_LOCAL_DEV", "1");
+    cmd.env("ANNEAL_NO_PROGRESS", "1");
     
     let output = cmd.output().expect("failed to execute cargo-anneal");
     

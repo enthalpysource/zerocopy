@@ -60,6 +60,7 @@ fs2 = "0.4"
 walkdir = "2.5.0"
 sha2 = "0.10"
 tempfile = "3.27.0"
+rayon = "1.11.0"
 
 # FIXME: Drop patch if forked change gets merged.
 [patch.crates-io]

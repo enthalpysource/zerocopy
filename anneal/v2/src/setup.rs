@@ -38,12 +38,13 @@ impl Tool {
     }
 }
 
+const AENEAS_DIR: &str = "aeneas";
+const RUST_SYSROOT: &str = "rust";
+const BIN_DIR: &str = "bin";
+const LIB_DIR: &str = "lib";
+
 pub struct Toolchain {
-    pub root: std::path::PathBuf,
-    aeneas_bin_dir: std::path::PathBuf,
-    rust_sysroot: std::path::PathBuf,
-    rust_bin: std::path::PathBuf,
-    rust_lib: std::path::PathBuf,
+    root: std::path::PathBuf,
 }
 
 impl Toolchain {
@@ -56,35 +57,27 @@ impl Toolchain {
         let root = CONFIG
             .resolve_installation_dir(location)
             .context("Toolchain not installed. Please run 'cargo anneal setup' first.")?;
-
-        let aeneas_bin_dir = root.join("aeneas").join("bin");
-        let rust_sysroot = root.join("rust");
-        let rust_bin = rust_sysroot.join("bin");
-        let rust_lib = rust_sysroot.join("lib");
-
-        Ok(Self {
-            root,
-            aeneas_bin_dir,
-            rust_sysroot,
-            rust_bin,
-            rust_lib,
-        })
+        Ok(Self { root })
     }
 
-    pub fn aeneas_bin_dir(&self) -> &std::path::Path {
-        &self.aeneas_bin_dir
+    pub fn root(&self) -> &std::path::Path {
+        &self.root
     }
 
-    pub fn rust_sysroot(&self) -> &std::path::Path {
-        &self.rust_sysroot
+    pub fn aeneas_bin_dir(&self) -> std::path::PathBuf {
+        self.root.join(AENEAS_DIR).join(BIN_DIR)
     }
 
-    pub fn rust_bin(&self) -> &std::path::Path {
-        &self.rust_bin
+    pub fn rust_sysroot(&self) -> std::path::PathBuf {
+        self.root.join(RUST_SYSROOT)
     }
 
-    pub fn rust_lib(&self) -> &std::path::Path {
-        &self.rust_lib
+    pub fn rust_bin(&self) -> std::path::PathBuf {
+        self.rust_sysroot().join(BIN_DIR)
+    }
+
+    pub fn rust_lib(&self) -> std::path::PathBuf {
+        self.rust_sysroot().join(LIB_DIR)
     }
 
     pub fn command(&self, tool: Tool) -> std::process::Command {
@@ -93,17 +86,7 @@ impl Toolchain {
 
     #[cfg(test)]
     pub fn new_test(root: std::path::PathBuf) -> Self {
-        let aeneas_bin_dir = root.join("aeneas").join("bin");
-        let rust_sysroot = root.join("rust");
-        let rust_bin = rust_sysroot.join("bin");
-        let rust_lib = rust_sysroot.join("lib");
-        Self {
-            root,
-            aeneas_bin_dir,
-            rust_sysroot,
-            rust_bin,
-            rust_lib,
-        }
+        Self { root }
     }
 }
 
@@ -127,10 +110,7 @@ pub fn run_setup(args: SetupArgs) -> anyhow::Result<()> {
 
 #[cfg(feature = "exocrate_tests")]
 pub fn run_test_setup() -> anyhow::Result<()> {
-    // FIXME: Add GitHub actions that will block changes that would update
-    // tests/toolchains/ files if TestSetup were invoked without committing them.
-    
-    println!("Running standard setup...");
+    log::debug!("Running standard setup...");
     run_setup(SetupArgs {
         local_archive: Some("target/anneal-exocrate.tar.zst".into()),
     })?;
@@ -142,7 +122,7 @@ pub fn run_test_setup() -> anyhow::Result<()> {
         .join("charon-only");
 
     if dest_dir.exists() {
-        println!("Cleaning existing test toolchain at {:?}", dest_dir);
+        log::debug!("Cleaning existing test toolchain at {:?}", dest_dir);
         std::fs::remove_dir_all(&dest_dir).context("Failed to clean test toolchain dir")?;
     }
     std::fs::create_dir_all(&dest_dir)?;
@@ -157,7 +137,7 @@ pub fn run_test_setup() -> anyhow::Result<()> {
         Ok(())
     };
 
-    println!("Copying Charon binaries...");
+    log::debug!("Copying Charon binaries...");
     copy_file(
         &toolchain.aeneas_bin_dir().join("charon"),
         &dest_dir.join("aeneas").join("bin").join("charon"),
@@ -167,13 +147,13 @@ pub fn run_test_setup() -> anyhow::Result<()> {
         &dest_dir.join("aeneas").join("bin").join("charon-driver"),
     )?;
 
-    println!("Copying rustc binary...");
+    log::debug!("Copying rustc binary...");
     copy_file(
         &toolchain.rust_bin().join("rustc"),
         &dest_dir.join("rust").join("bin").join("rustc"),
     )?;
 
-    println!("Copying rust libraries (this may take a while)...");
+    log::debug!("Copying rust libraries (this may take a while)...");
     let src_lib = toolchain.rust_lib();
     let dest_lib = dest_dir.join("rust").join("lib");
     
@@ -188,14 +168,15 @@ pub fn run_test_setup() -> anyhow::Result<()> {
         }
     }
 
-    println!("Test toolchain successfully set up at {:?}", dest_dir);
+    log::debug!("Test toolchain successfully set up at {:?}", dest_dir);
     Ok(())
 }
 
-#[cfg(all(test, feature = "exocrate_tests"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(feature = "exocrate_tests")]
     #[test]
     fn test_toolchain_paths() {
         // Ensure toolchain is installed locally for test.
@@ -203,7 +184,7 @@ mod tests {
         
         let toolchain = Toolchain::resolve().expect("Failed to resolve toolchain");
         
-        assert!(toolchain.root.is_dir(), "root is not a directory: {:?}", toolchain.root);
+        assert!(toolchain.root().is_dir(), "root is not a directory: {:?}", toolchain.root());
         assert!(toolchain.aeneas_bin_dir().is_dir(), "aeneas_bin_dir is not a directory: {:?}", toolchain.aeneas_bin_dir());
         assert!(toolchain.rust_sysroot().is_dir(), "rust_sysroot is not a directory: {:?}", toolchain.rust_sysroot());
         assert!(toolchain.rust_bin().is_dir(), "rust_bin is not a directory: {:?}", toolchain.rust_bin());
