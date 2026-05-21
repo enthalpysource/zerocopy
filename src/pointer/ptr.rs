@@ -6,6 +6,8 @@
 // This file may not be copied, modified, or distributed except according to
 // those terms.
 
+#![allow(missing_docs)]
+
 use core::{
     fmt::{Debug, Formatter},
     marker::PhantomData,
@@ -96,7 +98,8 @@ mod def {
         /// Note that this method does not consume `self`. The caller should
         /// watch out for `unsafe` code which uses the returned value in a way
         /// that violates the safety invariants of `self`.
-        pub(crate) fn as_inner(&self) -> PtrInner<'a, T> {
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn as_inner(&self) -> PtrInner<'a, T> {
             self.ptr
         }
     }
@@ -168,7 +171,7 @@ mod _conversions {
         T: 'a + ?Sized,
     {
         /// Constructs a `Ptr` from a shared reference.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[inline(always)]
         pub fn from_ref(ptr: &'a T) -> Self {
             let inner = PtrInner::from_ref(ptr);
@@ -196,7 +199,7 @@ mod _conversions {
         T: 'a + ?Sized,
     {
         /// Constructs a `Ptr` from an exclusive reference.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[inline(always)]
         pub fn from_mut(ptr: &'a mut T) -> Self {
             let inner = PtrInner::from_mut(ptr);
@@ -229,7 +232,8 @@ mod _conversions {
         // this doesn't prevent the caller from still using the pointer after
         // calling `as_ref`.
         #[allow(clippy::wrong_self_convention)]
-        pub(crate) fn as_ref(self) -> &'a T {
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn as_ref(self) -> &'a T {
             let raw = self.as_inner().as_non_null();
             // SAFETY: `self` satisfies the `Aligned` invariant, so we know that
             // `raw` is validly-aligned for `T`.
@@ -282,7 +286,7 @@ mod _conversions {
         ///
         /// Since `self` is borrowed mutably, this prevents any methods from
         /// being called on `self` as long as the returned `Ptr` exists.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[inline]
         #[allow(clippy::needless_lifetimes)] // Allows us to name the lifetime in the safety comment below.
         pub fn reborrow<'b>(&'b mut self) -> Ptr<'b, T, I>
@@ -328,7 +332,7 @@ mod _conversions {
         ///
         /// Since `self` is borrowed mutably, this prevents any methods from
         /// being called on `self` as long as the returned `Ptr` exists.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[inline]
         #[allow(clippy::needless_lifetimes)] // Allows us to name the lifetime in the safety comment below.
         pub fn reborrow_shared<'b>(&'b mut self) -> Ptr<'b, T, (Shared, I::Alignment, I::Validity)>
@@ -377,7 +381,8 @@ mod _conversions {
     {
         /// Converts `self` to a mutable reference.
         #[allow(clippy::wrong_self_convention)]
-        pub(crate) fn as_mut(self) -> &'a mut T {
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn as_mut(self) -> &'a mut T {
             let mut raw = self.as_inner().as_non_null();
             // SAFETY: `self` satisfies the `Aligned` invariant, so we know that
             // `raw` is validly-aligned for `T`.
@@ -435,7 +440,8 @@ mod _conversions {
             self.transmute_with::<U, V, <U as SizeEq<T>>::CastFrom, R>()
         }
 
-        pub(crate) fn transmute_with<U, V, C, R>(self) -> Ptr<'a, U, (I::Aliasing, Unaligned, V)>
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn transmute_with<U, V, C, R>(self) -> Ptr<'a, U, (I::Aliasing, Unaligned, V)>
         where
             V: Validity,
             U: TransmuteFromPtr<T, I::Aliasing, I::Validity, V, C, R> + ?Sized,
@@ -457,7 +463,7 @@ mod _conversions {
             unsafe { self.project_transmute_unchecked::<_, _, C>() }
         }
 
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[inline(always)]
         #[must_use]
         pub fn recall_validity<V, R>(self) -> Ptr<'a, T, (I::Aliasing, I::Alignment, V)>
@@ -495,7 +501,7 @@ mod _conversions {
         ///   presence, absence, or specific location of `UnsafeCell`s in `T`
         ///   and/or `U`, and on whether interior mutation is ever permitted via
         ///   those `UnsafeCell`s. See [`Validity`] for more details.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[inline(always)]
         #[must_use]
         pub unsafe fn project_transmute_unchecked<U: ?Sized, V, P>(
@@ -546,7 +552,8 @@ mod _conversions {
     {
         /// Converts a `Ptr` an unaligned `T` into a `Ptr` to an aligned
         /// `Unalign<T>`.
-        pub(crate) fn into_unalign(
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn into_unalign(
             self,
         ) -> Ptr<'a, crate::Unalign<T>, (I::Aliasing, Aligned, I::Validity)> {
             // FIXME(#1359): This should be a `transmute_with` call.
@@ -634,7 +641,8 @@ mod _transitions {
 
         /// Helps the type system unify two distinct invariant types which are
         /// actually the same.
-        pub(crate) fn unify_invariants<
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn unify_invariants<
             H: Invariants<Aliasing = I::Aliasing, Alignment = I::Alignment, Validity = I::Validity>,
         >(
             self,
@@ -662,7 +670,8 @@ mod _transitions {
 
         /// Checks the `self`'s alignment at runtime, returning an aligned `Ptr`
         /// on success.
-        pub(crate) fn try_into_aligned(
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn try_into_aligned(
             self,
         ) -> Result<Ptr<'a, T, (I::Aliasing, Aligned, I::Validity)>, AlignmentError<Self, T>>
         where
@@ -682,9 +691,8 @@ mod _transitions {
         #[inline]
         // FIXME(#859): Reconsider the name of this method before making it
         // public.
-        pub(crate) fn bikeshed_recall_aligned(
-            self,
-        ) -> Ptr<'a, T, (I::Aliasing, Aligned, I::Validity)>
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn bikeshed_recall_aligned(self) -> Ptr<'a, T, (I::Aliasing, Aligned, I::Validity)>
         where
             T: crate::Unaligned,
         {
@@ -700,7 +708,7 @@ mod _transitions {
         ///
         /// The caller promises that `self`'s referent conforms to the validity
         /// requirement of `V`.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[must_use]
         #[inline]
         pub unsafe fn assume_validity<V: Validity>(
@@ -717,7 +725,7 @@ mod _transitions {
         ///
         /// The caller promises to uphold the safety preconditions of
         /// `self.assume_validity<invariant::Initialized>()`.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[must_use]
         #[inline]
         pub unsafe fn assume_initialized(
@@ -734,7 +742,7 @@ mod _transitions {
         ///
         /// The caller promises to uphold the safety preconditions of
         /// `self.assume_validity<Valid>()`.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[must_use]
         #[inline]
         pub unsafe fn assume_valid(self) -> Ptr<'a, T, (I::Aliasing, I::Alignment, Valid)> {
@@ -756,7 +764,8 @@ mod _transitions {
         /// On error, unsafe code may rely on this method's returned
         /// `ValidityError` containing `self`.
         #[inline]
-        pub(crate) fn try_into_valid<R, S>(
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn try_into_valid<R, S>(
             mut self,
         ) -> Result<Ptr<'a, T, (I::Aliasing, I::Alignment, Valid)>, ValidityError<Self, T>>
         where
@@ -784,7 +793,7 @@ mod _transitions {
         }
 
         /// Forgets that `self`'s referent is validly-aligned for `T`.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[must_use]
         #[inline]
         pub fn forget_aligned(self) -> Ptr<'a, T, (I::Aliasing, Unaligned, I::Validity)> {
@@ -795,7 +804,8 @@ mod _transitions {
 }
 
 /// Casts of the referent type.
-pub(crate) use _casts::TryWithError;
+#[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+pub use _casts::TryWithError;
 mod _casts {
     use core::cell::UnsafeCell;
 
@@ -820,7 +830,7 @@ mod _casts {
         /// If `I::Aliasing` is [`Shared`], it must not be possible for safe
         /// code, operating on a `&T` and `&U` with the same referent
         /// simultaneously, to cause undefined behavior.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[inline(always)]
         #[must_use]
         pub unsafe fn cast_unchecked<U, C: Cast<T, U>>(
@@ -847,7 +857,7 @@ mod _casts {
         }
 
         /// Casts to a different referent type.
-        #[doc(hidden)]
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
         #[inline(always)]
         #[must_use]
         pub fn cast<U, C, R>(self) -> Ptr<'a, U, (I::Aliasing, Unaligned, I::Validity)>
@@ -972,7 +982,8 @@ mod _casts {
         /// Attempts to transform the pointer, restoring the original on
         /// failure.
         #[inline(always)]
-        pub(crate) fn try_with<U, J, E, F>(self, f: F) -> Result<Ptr<'a, U, J>, E::Mapped>
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn try_with<U, J, E, F>(self, f: F) -> Result<Ptr<'a, U, J>, E::Mapped>
         where
             U: 'a + ?Sized,
             J: Invariants<Aliasing = I::Aliasing>,
@@ -993,7 +1004,8 @@ mod _casts {
     /// `Self::Mapped` contain no non-ZST fields.
     ///
     /// `map` must pass ownership of `self`'s sole `Self::Inner` to `f`.
-    pub(crate) unsafe trait TryWithError<MappedInner> {
+    #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+    pub unsafe trait TryWithError<MappedInner> {
         type Inner;
         type Mapped;
         fn map<F: FnOnce(Self::Inner) -> MappedInner>(self, f: F) -> Self::Mapped;
@@ -1023,7 +1035,8 @@ mod _casts {
     {
         /// Casts this pointer-to-array into a slice.
         #[allow(clippy::wrong_self_convention)]
-        pub(crate) fn as_slice(self) -> Ptr<'a, [T], I> {
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn as_slice(self) -> Ptr<'a, [T], I> {
             let slice = self.as_inner().as_slice();
             // SAFETY: Note that, by post-condition on `PtrInner::as_slice`,
             // `slice` refers to the same byte range as `self.as_inner()`.
@@ -1087,7 +1100,7 @@ mod _casts {
         /// - If this is a suffix cast, `remainder` has the same address as
         ///   `self`.
         #[inline(always)]
-        pub(crate) fn try_cast_into<U, R>(
+        pub fn try_cast_into<U, R>(
             self,
             cast_type: CastType,
             meta: Option<U::PointerMetadata>,
@@ -1159,7 +1172,8 @@ mod _casts {
         /// references the same byte range as `self`.
         #[allow(unused)]
         #[inline(always)]
-        pub(crate) fn try_cast_into_no_leftover<U, R>(
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn try_cast_into_no_leftover<U, R>(
             self,
             meta: Option<U::PointerMetadata>,
         ) -> Result<Ptr<'a, U, (I::Aliasing, Aligned, Initialized)>, CastError<Self, U>>
@@ -1260,7 +1274,8 @@ mod _project {
         I::Aliasing: Reference,
     {
         /// Iteratively projects the elements `Ptr<T>` from `Ptr<[T]>`.
-        pub(crate) fn iter(&self) -> impl Iterator<Item = Ptr<'a, T, I>> {
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn iter(&self) -> impl Iterator<Item = Ptr<'a, T, I>> {
             // SAFETY:
             // 0. `elem` conforms to the aliasing invariant of `I::Aliasing`
             //    because projection does not impact the aliasing invariant.
@@ -1292,7 +1307,8 @@ mod _project {
         I: Invariants,
     {
         /// The number of slice elements in the object referenced by `self`.
-        pub(crate) fn len(&self) -> usize {
+        #[cfg_attr(not(zerocopy_unstable_ptr), doc(hidden))]
+        pub fn len(&self) -> usize {
             self.as_inner().meta().get()
         }
     }
