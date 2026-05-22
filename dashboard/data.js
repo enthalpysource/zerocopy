@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779487783706,
+  "lastUpdate": 1779487799341,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6525,6 +6525,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1006,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "39670e80a75cf768c9f715cfa60d49f93b4de489",
+          "message": "SQUASH ME: More clarifying tweaks, plus new (unreviewed) locking tests",
+          "timestamp": "2026-05-22T19:11:41Z",
+          "url": "https://github.com/google/zerocopy/pull/3394/commits/39670e80a75cf768c9f715cfa60d49f93b4de489"
+        },
+        "date": 1779487795614,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1032,
             "unit": "seconds"
           }
         ]
