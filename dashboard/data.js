@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779380716831,
+  "lastUpdate": 1779487746641,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6450,6 +6450,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 11,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "5e92221cebe3e206737f21a4769dfc96b67e351b",
+          "message": "SQUASH ME: More minor fix-ups and a parallel strategy for invoking charon",
+          "timestamp": "2026-05-22T19:11:41Z",
+          "url": "https://github.com/google/zerocopy/pull/3391/commits/5e92221cebe3e206737f21a4769dfc96b67e351b"
+        },
+        "date": 1779487743941,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 981,
             "unit": "seconds"
           }
         ]
