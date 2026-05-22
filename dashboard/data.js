@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779488624901,
+  "lastUpdate": 1779488935766,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -12169,6 +12169,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 753,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "9e7244b81bea553cd376f610409cc91c4ea462de",
+          "message": "SQUASH ME: Add vendored dependencies; might have been required by previous iterations; oops",
+          "timestamp": "2026-05-22T19:11:41Z",
+          "url": "https://github.com/google/zerocopy/pull/3393/commits/9e7244b81bea553cd376f610409cc91c4ea462de"
+        },
+        "date": 1779488931846,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 399,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 539,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 1022,
             "unit": "seconds"
           }
         ]
