@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779487839791,
+  "lastUpdate": 1779487881433,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6650,6 +6650,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1069,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "9e7244b81bea553cd376f610409cc91c4ea462de",
+          "message": "SQUASH ME: Add vendored dependencies; might have been required by previous iterations; oops",
+          "timestamp": "2026-05-22T19:11:41Z",
+          "url": "https://github.com/google/zerocopy/pull/3393/commits/9e7244b81bea553cd376f610409cc91c4ea462de"
+        },
+        "date": 1779487878525,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1114,
             "unit": "seconds"
           }
         ]
