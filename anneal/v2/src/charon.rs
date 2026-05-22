@@ -1,3 +1,12 @@
+// Copyright 2026 The Fuchsia Authors
+//
+// Licensed under the 2-Clause BSD License <LICENSE-BSD or
+// https://opensource.org/license/bsd-2-clause>, Apache License, Version 2.0
+// <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+// license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed except according to
+// those terms.
+
 //! Orchestration of Charon extraction.
 //!
 //! This module handles the invocation of the `charon` tool to extract
@@ -58,10 +67,6 @@ pub fn run_charon(
     };
 
     packages.par_iter().try_for_each(|artifact| {
-        if artifact.start_from.is_empty() {
-            return Ok(());
-        }
-
         let pb = mp.as_ref().map(|m| {
             let pb = m.add(indicatif::ProgressBar::new_spinner());
             pb.set_style(

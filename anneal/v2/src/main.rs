@@ -7,6 +7,7 @@
 // This file may not be copied, modified, or distributed except according to
 // those terms.
 
+use anyhow::Context as _;
 use clap::Parser as _;
 
 mod charon;
@@ -35,12 +36,16 @@ enum Commands {
     /// Helper to acquire shared or exclusive locks for multi-process integration testing (dev only)
     #[cfg(feature = "exocrate_tests")]
     TestLockHelper {
+        /// The role to run as: 'reader-a', 'reader-b', 'writer-a', or 'reader-exclusion'
         #[arg(long)]
         role: String,
+        /// Path to the directory to lock
         #[arg(long)]
         lock_dir: std::path::PathBuf,
+        /// Path to the shared log file where lock transitions are appended
         #[arg(long)]
         log_file: std::path::PathBuf,
+        /// Path to the temporary synchronization signal file
         #[arg(long)]
         sig_file: std::path::PathBuf,
     },
@@ -67,9 +72,9 @@ pub struct ExpandArgs {
     pub no_progress: bool,
 }
 
-fn setup(args: SetupArgs) {
+fn setup(args: SetupArgs) -> anyhow::Result<()> {
     crate::setup::run_setup(crate::setup::SetupArgs { local_archive: args.local_archive })
-        .expect("failed to setup toolchain");
+        .context("Failed to setup toolchain")
 }
 
 fn expand(args: ExpandArgs) -> anyhow::Result<()> {
@@ -95,7 +100,7 @@ fn expand(args: ExpandArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     // Suppressing timestamps removes a source of nondeterminism that is
     // difficult to work around in integration tests.
     env_logger::builder().format_timestamp(None).init();
@@ -110,21 +115,11 @@ fn main() {
 
     match args.command {
         Commands::Setup(args) => setup(args),
-        Commands::Expand(args) => {
-            if let Err(e) = expand(args) {
-                eprintln!("Error: {:?}", e);
-                std::process::exit(1);
-            }
-        }
+        Commands::Expand(args) => expand(args),
 
         #[cfg(feature = "exocrate_tests")]
         Commands::TestLockHelper { role, lock_dir, log_file, sig_file } => {
-            if let Err(e) =
-                crate::util::run_test_lock_helper(&role, &lock_dir, &log_file, &sig_file)
-            {
-                eprintln!("TestLockHelper failed: {:?}", e);
-                std::process::exit(1);
-            }
+            crate::util::run_test_lock_helper(&role, &lock_dir, &log_file, &sig_file)
         }
     }
 }
@@ -139,7 +134,8 @@ mod tests {
             // ASSUMPTION: Dependency builder installs archive at
             // `target/anneal-exocrate.tar.zst`.
             local_archive: Some("target/anneal-exocrate.tar.zst".into()),
-        });
+        })
+        .expect("Failed to run setup");
 
         // 2. Once setup completes successfully, resolve the toolchain.
         let toolchain = crate::setup::Toolchain::resolve().expect("Failed to resolve toolchain");
