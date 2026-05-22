@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779488469612,
+  "lastUpdate": 1779488569992,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -11924,6 +11924,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 693,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "d48a2766ccaffa7f283474bdfd204c0612fd7272",
+          "message": "SQUASH ME: First round of review focused on charon.rs; mostly style and comment changes",
+          "timestamp": "2026-05-22T19:11:41Z",
+          "url": "https://github.com/google/zerocopy/pull/3390/commits/d48a2766ccaffa7f283474bdfd204c0612fd7272"
+        },
+        "date": 1779488566235,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 88,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 548,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 719,
             "unit": "seconds"
           }
         ]
