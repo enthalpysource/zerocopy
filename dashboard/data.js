@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779487757379,
+  "lastUpdate": 1779487783706,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6500,6 +6500,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 991,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "0ff00c6cc1807676a369d744e147571446ce53ab",
+          "message": "SQUASH ME: Eliminate rust code parsing; simplify charon invocation; add tests to confirm charon is consuming all of workspace/project code",
+          "timestamp": "2026-05-22T19:11:41Z",
+          "url": "https://github.com/google/zerocopy/pull/3397/commits/0ff00c6cc1807676a369d744e147571446ce53ab"
+        },
+        "date": 1779487780035,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1006,
             "unit": "seconds"
           }
         ]
