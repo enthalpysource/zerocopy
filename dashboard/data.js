@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779487821055,
+  "lastUpdate": 1779487834896,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6600,6 +6600,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1053,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "3ea68daa599483adfe1a4a6708d1cfa2c4694275",
+          "message": "SQUASH ME: Initial port of run_charon and Expand",
+          "timestamp": "2026-05-22T19:11:41Z",
+          "url": "https://github.com/google/zerocopy/pull/3389/commits/3ea68daa599483adfe1a4a6708d1cfa2c4694275"
+        },
+        "date": 1779487832304,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1068,
             "unit": "seconds"
           }
         ]
