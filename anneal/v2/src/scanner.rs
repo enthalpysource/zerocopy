@@ -9,19 +9,16 @@
 
 use sha2::Digest as _;
 
+/// Represents a compilation target (artifact) that needs to be processed.
+///
+/// In this rewrite, we no longer directly parse Rust files to extract annotations
+/// or entry points. Instead, Charon compiles the entire target to generate LLBC
+/// files, and annotations will be processed from LLBC directly at a later stage.
 pub struct AnnealArtifact {
     pub name: crate::resolve::AnnealTargetName,
     pub target_kind: crate::resolve::AnnealTargetKind,
     /// The path to the crate's `Cargo.toml`.
     pub manifest_path: std::path::PathBuf,
-    pub items: Vec<crate::parse::ParsedLeanItem<crate::parse::hkd::Safe>>,
-    // NOTE: We store `start_from` as a `HashSet` rather than a `Vec` as an
-    // optimization: when we encounter items which we can't name (which carry
-    // Anneal annotations), we add their parent module to the list of
-    // entrypoints. If there are multiple items in the same module, this can
-    // lead to duplication in the list of entrypoints. Storing them in a
-    // `HashSet` avoids us having to de-dup later.
-    pub start_from: std::collections::HashSet<String>,
 }
 
 impl AnnealArtifact {
@@ -107,39 +104,15 @@ impl AnnealArtifact {
     }
 }
 
+/// Scans the resolved workspace roots to identify the targets that need to be passed
+/// to Charon. No Rust source code parsing is performed during this step.
 pub fn scan_workspace(roots: &crate::resolve::Roots) -> anyhow::Result<Vec<AnnealArtifact>> {
     let mut artifacts = Vec::new();
     for target in &roots.roots {
-        let mut start_from = std::collections::HashSet::new();
-        if let Ok(content) = std::fs::read_to_string(&target.src_path) {
-            for line in content.lines() {
-                let trimmed = line.trim();
-                let mut func_name = None;
-                if let Some(rest) = trimmed.strip_prefix("fn ") {
-                    func_name = rest.split('(').next();
-                } else if let Some(rest) = trimmed.strip_prefix("pub fn ") {
-                    func_name = rest.split('(').next();
-                }
-                if let Some(name) = func_name {
-                    let name = name.trim();
-                    if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                        start_from.insert(format!("crate::{}", name));
-                    }
-                }
-            }
-        }
-
-        // If we found nothing, but it's a bin, assume `main`.
-        if start_from.is_empty() && target.kind == crate::resolve::AnnealTargetKind::Bin {
-            start_from.insert("crate::main".to_string());
-        }
-
         artifacts.push(AnnealArtifact {
             name: target.name.clone(),
             target_kind: target.kind,
             manifest_path: target.manifest_path.clone(),
-            items: vec![], // Empty for now.
-            start_from,
         });
     }
     Ok(artifacts)

@@ -128,10 +128,6 @@ pub(crate) fn prepend_to_env_var(var_name: &str, new_path: &std::path::Path) -> 
     prepend_to_env_var_impl(current_val, new_path)
 }
 
-/// OS command-line length limits (Windows is ~32k; Linux `ARG_MAX` is
-/// usually larger, but variable).
-pub(crate) const ARG_CHAR_LIMIT: usize = 32_768;
-
 pub(crate) struct ProcessOutput {
     pub status: std::process::ExitStatus,
     pub stderr_lines: Vec<String>,
@@ -249,6 +245,21 @@ pub(crate) fn run_test_lock_helper(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! workspace_fixture {
+    ($dir:expr, { $($path:expr => $content:expr),* $(,)? }) => {{
+        let root = $dir.path();
+        $(
+            let file_path = root.join($path);
+            if let Some(parent) = file_path.parent() {
+                std::fs::create_dir_all(parent).unwrap();
+            }
+            std::fs::write(&file_path, $content).unwrap();
+        )*
+    }};
 }
 
 #[cfg(test)]

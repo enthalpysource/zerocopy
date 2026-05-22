@@ -141,8 +141,7 @@ pub struct AnnealTargetName {
 pub struct AnnealTarget {
     pub name: AnnealTargetName,
     pub kind: AnnealTargetKind,
-    /// Path to the main source file for this target.
-    pub src_path: std::path::PathBuf,
+
     /// Path to the `Cargo.toml` for this target.
     pub manifest_path: std::path::PathBuf,
 }
@@ -268,7 +267,6 @@ pub fn resolve_roots(args: &Args) -> anyhow::Result<Roots> {
             // reference for the rest of the pipeline. This avoids ambiguity
             // if the CWD changes or if we're working with complex workspace
             // structures.
-            src_path: target.src_path.as_std_path().to_owned(),
             manifest_path: package.manifest_path.as_std_path().to_owned(),
         }));
     }

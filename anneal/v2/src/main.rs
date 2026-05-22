@@ -12,7 +12,6 @@ use clap::Parser as _;
 
 mod charon;
 mod diagnostics;
-mod parse;
 mod resolve;
 mod scanner;
 mod setup;

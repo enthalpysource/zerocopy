@@ -101,58 +101,6 @@ pub fn run_charon(
         // the process immediately rather than attempting to proceed and translate other parts of the crate.
         cmd.arg("--abort-on-error");
 
-        for item in &artifact.items {
-            if let crate::parse::ParsedItem::Function(func) = &item.item {
-                // Check if the function body is an Axiom (unsafe).
-                if let crate::parse::attr::FunctionBlockInner::Axiom { .. } = func.anneal.inner {
-                    // Mark `unsafe(axiom)` functions as opaque in Charon. This
-                    // instructs Aeneas to treat the function as external and
-                    // generate a template file (`FunsExternal_Template.lean`)
-                    // containing the type signature as an axiom, rather than
-                    // attempting to translate the body. This allows users to
-                    // mechanically verify the composition of safe code while
-                    // manually vouching for the correctness of unsafe leaf
-                    // functions.
-                    let mut opaque_name = item.module_path.join("::");
-                    opaque_name.push_str("::");
-                    opaque_name.push_str(func.item.name());
-
-                    log::trace!("Marking item as opaque in Charon: {}", opaque_name);
-                    cmd.args(["--opaque", &opaque_name]);
-                }
-            }
-        }
-
-        // Start translation from specific entry points. Sort to ensure
-        // deterministic ordering for testing. Determinism is important for
-        // production too, because the order of arguments can affect the order
-        // of generated definitions in Lean, which we want to be stable to
-        // minimize churn.
-        let mut start_from = artifact.start_from.iter().map(String::as_ref).collect::<Vec<_>>();
-        start_from.sort_unstable(); // Slightly faster than `sort`, and equivalent for strings.
-
-        if log::log_enabled!(log::Level::Trace) {
-            for entry in &start_from {
-                log::trace!("Translation entry point: {}", entry);
-            }
-        }
-
-        let start_from_str = start_from.join(",");
-        if start_from_str.len() > crate::util::ARG_CHAR_LIMIT {
-            // FIXME: Pass the list of entry points to Charon via a file instead
-            // of the command line. This is currently blocked on upstream Charon
-            // supporting response files or file-based entry points:
-            // https://github.com/AeneasVerif/charon/issues/1020
-            anyhow::bail!(
-                "The list of Anneal entry points for package '{}' is too large ({} bytes). \n\
-                 This exceeds safe OS command-line limits.",
-                artifact.name.package_name,
-                start_from_str.len()
-            );
-        }
-
-        cmd.arg("--start-from").arg(start_from_str);
-
         // Separator for the underlying cargo command.
         cmd.arg("--");
 
@@ -322,10 +270,9 @@ mod tests {
         // 5. Resolve roots.
         let roots = resolve_roots(&args).unwrap();
 
-        // 6. Scan workspace (our simplified scanner will find `add` function).
+        // 6. Scan workspace.
         let packages = scan_workspace(&roots).unwrap();
         assert_eq!(packages.len(), 1);
-        assert!(packages[0].start_from.contains("crate::add"));
 
         // 7. Lock run root.
         let locked_roots = roots.lock_run_root().unwrap();
@@ -345,5 +292,175 @@ mod tests {
         // 9. Verify .llbc file exists.
         let llbc_path = packages[0].llbc_path(&locked_roots);
         assert!(llbc_path.exists(), "llbc file not found at {:?}", llbc_path);
+    }
+
+    #[cfg(feature = "exocrate_tests")]
+    #[test]
+    fn test_run_charon_multiple_modules() {
+        let _ = env_logger::builder().is_test(true).try_init();
+
+        // 1. Create a temporary workspace with multiple modules.
+        let temp_dir = tempfile::tempdir().unwrap();
+        crate::workspace_fixture!(&temp_dir, {
+            "Cargo.toml" => r#"
+                [package]
+                name = "test_proj"
+                version = "0.1.0"
+                edition = "2021"
+
+                [lib]
+                path = "src/lib.rs"
+            "#,
+            "src/lib.rs" => r#"
+                pub mod foo;
+                pub mod bar;
+            "#,
+            "src/foo.rs" => r#"
+                pub fn foo_fn() {}
+            "#,
+            "src/bar.rs" => r#"
+                pub fn bar_fn() {}
+            "#,
+        });
+
+        // 2. Construct Args pointing to this temp project.
+        let args = Args::try_parse_from(&[
+            "cargo-anneal",
+            "--manifest-path",
+            temp_dir.path().join("Cargo.toml").to_str().unwrap(),
+        ])
+        .unwrap();
+
+        // 3. Resolve roots and scan workspace.
+        let roots = resolve_roots(&args).unwrap();
+        let packages = scan_workspace(&roots).unwrap();
+        assert_eq!(packages.len(), 1);
+
+        // 4. Lock run root.
+        let locked_roots = roots.lock_run_root().unwrap();
+
+        // 5. Resolve toolchain and run charon.
+        let toolchain = crate::setup::Toolchain::resolve().expect("Failed to resolve toolchain");
+        let res = run_charon(
+            &args,
+            &toolchain,
+            &locked_roots,
+            &packages,
+            false, // show_progress
+        );
+        assert!(res.is_ok(), "charon failed: {:?}", res.err());
+
+        // 6. Verify .llbc file exists and contains BOTH functions.
+        let llbc_path = packages[0].llbc_path(&locked_roots);
+        assert!(llbc_path.exists(), "llbc file not found at {:?}", llbc_path);
+
+        log::debug!("llbc path: {:?}", llbc_path);
+
+        let llbc_content = std::fs::read_to_string(&llbc_path).expect("failed to read llbc file");
+
+        log::debug!("llbc content:\n'''\n{}\n'''", llbc_content);
+
+        // Assert that the serialized AST contains the names of both functions
+        // defined in separate, independent modules.
+        assert!(llbc_content.contains("foo_fn"), "Function 'foo_fn' was not translated!");
+        assert!(llbc_content.contains("bar_fn"), "Function 'bar_fn' was not translated!");
+    }
+
+    #[cfg(feature = "exocrate_tests")]
+    #[test]
+    fn test_run_charon_multiple_packages() {
+        let _ = env_logger::builder().is_test(true).try_init();
+
+        // 1. Create a temporary workspace containing multiple packages.
+        let temp_dir = tempfile::tempdir().unwrap();
+        crate::workspace_fixture!(&temp_dir, {
+            "Cargo.toml" => r#"
+                [workspace]
+                resolver = "2"
+                members = [
+                    "package_a",
+                    "package_b",
+                ]
+            "#,
+            "package_a/Cargo.toml" => r#"
+                [package]
+                name = "package_a"
+                version = "0.1.0"
+                edition = "2021"
+
+                [lib]
+                path = "src/lib.rs"
+            "#,
+            "package_a/src/lib.rs" => r#"
+                pub fn func_a() {}
+            "#,
+            "package_b/Cargo.toml" => r#"
+                [package]
+                name = "package_b"
+                version = "0.1.0"
+                edition = "2021"
+
+                [lib]
+                path = "src/lib.rs"
+            "#,
+            "package_b/src/lib.rs" => r#"
+                pub fn func_b() {}
+            "#,
+        });
+
+        // 2. Construct Args pointing to this temp project.
+        let args = Args::try_parse_from(&[
+            "cargo-anneal",
+            "--manifest-path",
+            temp_dir.path().join("Cargo.toml").to_str().unwrap(),
+        ])
+        .unwrap();
+
+        // 3. Resolve roots and scan workspace.
+        let roots = resolve_roots(&args).unwrap();
+        let packages = scan_workspace(&roots).unwrap();
+        assert_eq!(packages.len(), 2, "Expected exactly two packages resolved in workspace");
+
+        // 4. Lock run root.
+        let locked_roots = roots.lock_run_root().unwrap();
+
+        // 5. Resolve toolchain and run charon on both packages.
+        let toolchain = crate::setup::Toolchain::resolve().expect("Failed to resolve toolchain");
+        let res = run_charon(
+            &args,
+            &toolchain,
+            &locked_roots,
+            &packages,
+            false, // show_progress
+        );
+        assert!(res.is_ok(), "charon failed: {:?}", res.err());
+
+        // 6. Verify .llbc file exists and contains correct code for Package A.
+        let llbc_path_a = packages[0].llbc_path(&locked_roots);
+        assert!(llbc_path_a.exists(), "llbc file for Package A not found at {:?}", llbc_path_a);
+        let llbc_content_a =
+            std::fs::read_to_string(&llbc_path_a).expect("failed to read llbc file A");
+        assert!(
+            llbc_content_a.contains("func_a"),
+            "Function 'func_a' was not translated in Package A!"
+        );
+        assert!(
+            !llbc_content_a.contains("func_b"),
+            "Function 'func_b' was incorrectly translated in Package A!"
+        );
+
+        // 7. Verify .llbc file exists and contains correct code for Package B.
+        let llbc_path_b = packages[1].llbc_path(&locked_roots);
+        assert!(llbc_path_b.exists(), "llbc file for Package B not found at {:?}", llbc_path_b);
+        let llbc_content_b =
+            std::fs::read_to_string(&llbc_path_b).expect("failed to read llbc file B");
+        assert!(
+            llbc_content_b.contains("func_b"),
+            "Function 'func_b' was not translated in Package B!"
+        );
+        assert!(
+            !llbc_content_b.contains("func_a"),
+            "Function 'func_a' was incorrectly translated in Package B!"
+        );
     }
 }
