@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779488616193,
+  "lastUpdate": 1779488624901,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -12134,6 +12134,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 789,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "1fb175297d7bdf03187f2399cb7404962954ed39",
+          "message": "SQUASH ME: Add copyright/licenses to rust code; drop skipping behaviour from charon invocaitons loop; light code cleanup; a little documentation for generated test helper",
+          "timestamp": "2026-05-22T19:11:41Z",
+          "url": "https://github.com/google/zerocopy/pull/3396/commits/1fb175297d7bdf03187f2399cb7404962954ed39"
+        },
+        "date": 1779488620283,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 97,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 571,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 753,
             "unit": "seconds"
           }
         ]
