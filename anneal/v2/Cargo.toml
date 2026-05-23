@@ -46,5 +46,18 @@ exocrate = { path = "./exocrate" }
 # FIXME: Update to version number "1.2.2-alpha" when it is released.
 toml_const = { git = "https://github.com/facesthe/toml_const.git", rev = "b1119325fae3b2a7ca61cd6115134c1c1f113009" }
 clap = { version = "4.5", features = ["derive"] }
+clap-cargo = { version = "0.18.3", features = ["cargo_metadata"] }
 env_logger = "0.11"
 log = "0.4"
+anyhow = "1.0.102"
+cargo_metadata = "0.23.1"
+miette = { version = "7.6.0", features = ["derive", "fancy"] }
+thiserror = "2.0.18"
+serde_json = "1.0.149"
+serde = { version = "1.0.228", features = ["derive"] }
+indicatif = { version = "0.18.4", features = ["improved_unicode"] }
+fs2 = "0.4"
+walkdir = "2.5.0"
+sha2 = "0.10"
+tempfile = "3.27.0"
+rayon = "1.11.0"
