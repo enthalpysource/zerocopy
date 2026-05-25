@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779736417103,
+  "lastUpdate": 1779736423446,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -7395,6 +7395,31 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3383/commits/f300c70eb6104a5a175d5c0de463f32de3316d9c"
         },
         "date": 1779736415002,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "8815480d922eb5f7827aed0ea7e54073b1c950e5",
+          "message": "[anneal][v2] Add Cargo workspace resolution and target resolution logic",
+          "timestamp": "2026-05-25T04:56:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3401/commits/8815480d922eb5f7827aed0ea7e54073b1c950e5"
+        },
+        "date": 1779736420177,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
