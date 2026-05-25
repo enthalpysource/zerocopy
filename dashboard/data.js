@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779749346106,
+  "lastUpdate": 1779749349202,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -8138,6 +8138,31 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3402/commits/26c45cf3848f5b65df19e6f01d2dfcf9fe4e93db"
         },
         "date": 1779749333541,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 8,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "fafcee46f6866df9d56f36cf6f7d069b830b5452",
+          "message": "[anneal][v2] Add charon execution engine, expand command CLI, and integration tests",
+          "timestamp": "2026-05-25T20:22:43Z",
+          "url": "https://github.com/google/zerocopy/pull/3404/commits/fafcee46f6866df9d56f36cf6f7d069b830b5452"
+        },
+        "date": 1779749334139,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
