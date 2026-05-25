@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779740591317,
+  "lastUpdate": 1779740715931,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -893,6 +893,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/commit/2fcfb3371cdc0f6ca1c16ab6c18253de09194113"
         },
         "date": 1779737022121,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Image Size",
+            "value": 11596,
+            "unit": "Megabytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mdittmer@users.noreply.github.com",
+            "name": "Mark Dittmer",
+            "username": "mdittmer"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "275aff21f3b22c4c4db0311576b897b8d5805fa8",
+          "message": "[anneal][v2] Independently vendor and patch toml_const (#3381)\n\n- Vendor `anneal/v2` dependencies independently\n- Patch `toml_const` to avoid breakage on `'cfg(...)'` keys in\n  `Cargo.toml` files\n\ngherrit-pr-id: Ga27arw5h5oz3ldi25ijsj2rsbzuqictv",
+          "timestamp": "2026-05-25T19:51:17Z",
+          "tree_id": "bb9133d186a3e0b671544c47ee9211654e81bc5f",
+          "url": "https://github.com/google/zerocopy/commit/275aff21f3b22c4c4db0311576b897b8d5805fa8"
+        },
+        "date": 1779740713029,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
