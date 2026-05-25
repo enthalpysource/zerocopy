@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779738728972,
+  "lastUpdate": 1779739518326,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -14933,6 +14933,43 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 754,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mark Dittmer",
+            "username": "mdittmer",
+            "email": "mdittmer@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "275aff21f3b22c4c4db0311576b897b8d5805fa8",
+          "message": "[anneal][v2] Independently vendor and patch toml_const (#3381)\n\n- Vendor `anneal/v2` dependencies independently\n- Patch `toml_const` to avoid breakage on `'cfg(...)'` keys in\n  `Cargo.toml` files\n\ngherrit-pr-id: Ga27arw5h5oz3ldi25ijsj2rsbzuqictv",
+          "timestamp": "2026-05-25T19:51:17Z",
+          "url": "https://github.com/google/zerocopy/commit/275aff21f3b22c4c4db0311576b897b8d5805fa8"
+        },
+        "date": 1779739514778,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 124,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 558,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 764,
             "unit": "seconds"
           }
         ]
