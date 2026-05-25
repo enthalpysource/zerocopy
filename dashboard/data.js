@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779749335710,
+  "lastUpdate": 1779749338034,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -8038,6 +8038,31 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3383/commits/f838f8ebae2730fa468f9001522603869c6095aa"
         },
         "date": 1779749329182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "7035d4bf1e1d5b271e25c1fdfca8fb36ce881eb0",
+          "message": "[anneal][v2] Add exocrate toolchain setup and Toolchain resolver",
+          "timestamp": "2026-05-25T20:22:43Z",
+          "url": "https://github.com/google/zerocopy/pull/3400/commits/7035d4bf1e1d5b271e25c1fdfca8fb36ce881eb0"
+        },
+        "date": 1779749331808,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
