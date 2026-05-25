@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779737286831,
+  "lastUpdate": 1779737289588,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -14077,6 +14077,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 745,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "8815480d922eb5f7827aed0ea7e54073b1c950e5",
+          "message": "[anneal][v2] Add Cargo workspace resolution and target resolution logic",
+          "timestamp": "2026-05-25T04:56:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3401/commits/8815480d922eb5f7827aed0ea7e54073b1c950e5"
+        },
+        "date": 1779737282316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 99,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 552,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 738,
             "unit": "seconds"
           }
         ]
