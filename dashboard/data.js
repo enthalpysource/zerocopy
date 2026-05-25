@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779737241040,
+  "lastUpdate": 1779737243978,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -13937,6 +13937,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 703,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "632f851f0a3ff3b8e5b4168a40e559d9cbf582fb",
+          "message": "[anneal][v2] Add exocrate toolchain setup and Toolchain resolver",
+          "timestamp": "2026-05-25T04:56:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3400/commits/632f851f0a3ff3b8e5b4168a40e559d9cbf582fb"
+        },
+        "date": 1779737239279,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 94,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 559,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 735,
             "unit": "seconds"
           }
         ]
