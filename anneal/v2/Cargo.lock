@@ -177,7 +177,7 @@ dependencies = [
  "sha2 0.10.9",
  "tempfile",
  "thiserror",
- "toml_const",
+ "toml_const 1.2.2-alpha (git+https://github.com/mdittmer/toml_const?branch=replace-chars-for-rust-cfg)",
  "walkdir",
 ]
 
@@ -476,7 +476,7 @@ dependencies = [
  "sha2-const",
  "tar",
  "tempfile",
- "toml_const",
+ "toml_const 1.2.2-alpha (git+https://github.com/facesthe/toml_const.git?rev=b1119325fae3b2a7ca61cd6115134c1c1f113009)",
  "ureq",
  "windows-sys 0.52.0",
  "zstd",
@@ -1313,7 +1313,29 @@ source = "git+https://github.com/facesthe/toml_const.git?rev=b1119325fae3b2a7ca6
 dependencies = [
  "phf",
  "toml",
- "toml_const_macros",
+ "toml_const_macros 1.2.2-alpha (git+https://github.com/mdittmer/toml_const?branch=replace-chars-for-rust-cfg)",
+]
+
+[[package]]
+name = "toml_const"
+version = "1.2.2-alpha"
+source = "git+https://github.com/facesthe/toml_const.git?rev=b1119325fae3b2a7ca61cd6115134c1c1f113009#b1119325fae3b2a7ca61cd6115134c1c1f113009"
+dependencies = [
+ "phf",
+ "toml",
+ "toml_const_macros 1.2.2-alpha (git+https://github.com/facesthe/toml_const.git?rev=b1119325fae3b2a7ca61cd6115134c1c1f113009)",
+]
+
+[[package]]
+name = "toml_const_macros"
+version = "1.2.2-alpha"
+source = "git+https://github.com/facesthe/toml_const.git?rev=b1119325fae3b2a7ca61cd6115134c1c1f113009#b1119325fae3b2a7ca61cd6115134c1c1f113009"
+dependencies = [
+ "indexmap",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "toml",
 ]
 
 [[package]]
