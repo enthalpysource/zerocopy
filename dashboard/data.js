@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779736887894,
+  "lastUpdate": 1779737025392,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -864,6 +864,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/commit/881160631750e2e1a5876327f5f14804a77d4cc8"
         },
         "date": 1779380143954,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Image Size",
+            "value": 11596,
+            "unit": "Megabytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2fcfb3371cdc0f6ca1c16ab6c18253de09194113",
+          "message": "[anneal][v2] Initial commit of `exocrate` (#3376)\n\ngherrit-pr-id: G34qjom3lz7cc6hd57tgp44t4pzlstdhj\n\nCo-authored-by: Mark Dittmer <markdittmer@google.com>",
+          "timestamp": "2026-05-25T15:20:48-04:00",
+          "tree_id": "602fe9e513bae3aa5ba6dcf91e4b5b93cf8d59dd",
+          "url": "https://github.com/google/zerocopy/commit/2fcfb3371cdc0f6ca1c16ab6c18253de09194113"
+        },
+        "date": 1779737022121,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
