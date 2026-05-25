@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779733868173,
+  "lastUpdate": 1779733869653,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -6945,6 +6945,31 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3400/commits/30344a26fa13fd857c2ffcd6462a6ac0eb7e2da8"
         },
         "date": 1779733864353,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 6,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "e8924f2dc907cdbd9b3c71c64cce2342944e2527",
+          "message": "[anneal][v2] Add utility functions: environment helpers and DirLock",
+          "timestamp": "2026-05-25T04:56:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3399/commits/e8924f2dc907cdbd9b3c71c64cce2342944e2527"
+        },
+        "date": 1779733866413,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
