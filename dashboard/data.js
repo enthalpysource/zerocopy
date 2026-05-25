@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779734805004,
+  "lastUpdate": 1779734807499,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -13219,6 +13219,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 717,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "e229a984fc689f56bc396b0cc8da6ec021d2cce6",
+          "message": "[anneal][v2] Add DiagnosticMapper to map compiler errors back to Rust source code",
+          "timestamp": "2026-05-25T04:56:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3403/commits/e229a984fc689f56bc396b0cc8da6ec021d2cce6"
+        },
+        "date": 1779734802358,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 94,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 547,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 722,
             "unit": "seconds"
           }
         ]
