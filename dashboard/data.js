@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779814333703,
+  "lastUpdate": 1779814513285,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -922,6 +922,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/commit/275aff21f3b22c4c4db0311576b897b8d5805fa8"
         },
         "date": 1779740713029,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Image Size",
+            "value": 11596,
+            "unit": "Megabytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0321b8e7055ae7159280930753924207775dc35a",
+          "message": "[anneal][exocrate] Upgrade to toml_const 1.3.0 (#3415)\n\ngherrit-pr-id: Gz2xxcekiwax6yzlsfzuwlzh4mcfd5nms",
+          "timestamp": "2026-05-26T16:20:03Z",
+          "tree_id": "0b33f6617272bf085e9e17ced8468c3c66b75681",
+          "url": "https://github.com/google/zerocopy/commit/0321b8e7055ae7159280930753924207775dc35a"
+        },
+        "date": 1779814509629,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
