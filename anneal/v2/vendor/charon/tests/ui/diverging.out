@@ -1,0 +1,34 @@
+# Final LLBC before serialization:
+
+// Full name: test_crate::my_panic
+fn my_panic(_1: u32) -> !
+{
+    let _0: !; // return
+    let _x_1: u32; // arg #1
+
+    panic(core::panicking::panic)
+}
+
+// Full name: test_crate::do_something_else
+fn do_something_else()
+{
+    let _0: (); // return
+
+    _0 = ()
+    _0 = ()
+    return
+}
+
+// Full name: test_crate::call_my_panic
+fn call_my_panic()
+{
+    let _0: (); // return
+    let _1: !; // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    _1 = my_panic(const 0 : u32)
+}
+
+
+

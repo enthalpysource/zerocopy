@@ -1,0 +1,31 @@
+# Final LLBC before serialization:
+
+// Full name: crate1::random_number
+pub fn random_number() -> u32
+{
+    let _0: u32; // return
+
+    _0 = const 4 : u32
+    return
+}
+
+// Full name: crate2::extra_random_number
+pub fn extra_random_number() -> u32
+{
+    let _0: u32; // return
+    let _1: u32; // anonymous local
+    let _2: (u32, bool); // anonymous local
+
+    storage_live(_2)
+    storage_live(_1)
+    // Even more random.
+    _1 = random_number()
+    _2 = copy _1 checked.+ const 1 : u32
+    assert(move _2.1 == false) (overflow) else panic
+    _0 = move _2.0
+    storage_dead(_1)
+    return
+}
+
+
+

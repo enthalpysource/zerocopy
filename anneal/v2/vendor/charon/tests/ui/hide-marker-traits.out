@@ -1,0 +1,35 @@
+# Final LLBC before serialization:
+
+// Full name: test_crate::Idx
+trait Idx<Self>
+
+// Full name: test_crate::IndexVec
+pub struct IndexVec<I>
+where
+    [@TraitClause0]: Idx<I>,
+{
+  i: I,
+}
+
+// Full name: test_crate::Vector
+pub struct Vector<I>
+where
+    [@TraitClause0]: Idx<I>,
+{
+  vector: IndexVec<I>[@TraitClause0],
+}
+
+// Full name: test_crate::foo
+fn foo<T>(_1: T)
+{
+    let _0: (); // return
+    let _x_1: T; // arg #1
+
+    _0 = ()
+    _0 = ()
+    conditional_drop[{built_in impl Destruct for T}] _x_1
+    return
+}
+
+
+

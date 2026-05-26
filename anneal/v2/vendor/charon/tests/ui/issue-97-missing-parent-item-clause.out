@@ -1,0 +1,79 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    non-dyn-compatible
+}
+
+fn UNIT_METADATA()
+{
+    let _0: (); // return
+
+    _0 = ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
+// Full name: test_crate::Ord
+pub trait Ord<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    vtable: test_crate::Ord::{vtable}
+}
+
+// Full name: test_crate::AVLTree
+pub struct AVLTree<T>
+where
+    [@TraitClause0]: Sized<T>,
+{
+  x: T,
+}
+
+// Full name: test_crate::{AVLTree<T>[@TraitClause0]}::insert
+pub fn insert<'_0, T>(_1: &'_0 mut AVLTree<T>[@TraitClause0])
+where
+    [@TraitClause0]: Sized<T>,
+    [@TraitClause1]: Ord<T>,
+{
+    let _0: (); // return
+    let self_1: &'1 mut AVLTree<T>[@TraitClause0]; // arg #1
+
+    _0 = ()
+    panic(core::panicking::panic)
+}
+
+// Full name: test_crate::{impl Ord for u32}
+impl Ord for u32 {
+    parent_clause0 = {built_in impl MetaSized for u32}
+    vtable: {impl Ord for u32}::{vtable}
+}
+
+// Full name: test_crate::test
+pub fn test(_1: AVLTree<u32>[{built_in impl Sized for u32}])
+{
+    let _0: (); // return
+    let tree_1: AVLTree<u32>[{built_in impl Sized for u32}]; // arg #1
+    let _2: (); // anonymous local
+    let _3: &'1 mut AVLTree<u32>[{built_in impl Sized for u32}]; // anonymous local
+
+    _0 = ()
+    storage_live(_2)
+    storage_live(_3)
+    _3 = &two-phase-mut tree_1
+    _2 = insert<'3, u32>[{built_in impl Sized for u32}, {impl Ord for u32}](move _3)
+    storage_dead(_3)
+    storage_dead(_2)
+    _0 = ()
+    return
+}
+
+
+

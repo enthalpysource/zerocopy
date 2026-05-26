@@ -1,0 +1,20 @@
+# Final LLBC before serialization:
+
+// Full name: foreign_constant_aux::CONSTANT
+pub fn CONSTANT() -> u8
+= <opaque>
+
+// Full name: foreign_constant_aux::CONSTANT
+pub const CONSTANT: u8 = CONSTANT()
+
+// Full name: test_crate::foo
+fn foo() -> u8
+{
+    let _0: u8; // return
+
+    _0 = copy CONSTANT
+    return
+}
+
+
+

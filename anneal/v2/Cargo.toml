@@ -60,3 +60,5 @@ walkdir = "2.5.0"
 sha2 = "0.10"
 tempfile = "3.27.0"
 rayon = "1.11.0"
+# `rev` is `main` branch HEAD on 2026-05-26.
+charon_lib = { package = "charon", git = "https://github.com/AeneasVerif/charon.git", rev = "419f53b6eed3fe487a8427fd290a734c49634366" }

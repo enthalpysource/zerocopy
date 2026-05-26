@@ -1,0 +1,147 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
+    non-dyn-compatible
+}
+
+unsafe fn core::marker::Destruct::drop_in_place<Self>(_1: *mut Self)
+= <opaque>
+
+// Full name: test_crate::Trait
+pub trait Trait<Self, Self_Type>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    parent_clause1 : [@TraitClause1]: Sized<Self_Type>
+    vtable: test_crate::Trait::{vtable}<Self_Type>
+}
+
+// Full name: test_crate::{impl Trait<()> for ()}
+impl Trait<()> for () {
+    parent_clause0 = {built_in impl MetaSized for ()}
+    parent_clause1 = {built_in impl Sized for ()}
+    vtable: {impl Trait<()> for ()}::{vtable}
+}
+
+// Full name: test_crate::HashMap
+pub struct HashMap<S>
+where
+    [@TraitClause0]: Sized<S>,
+{
+  S,
+}
+
+// Full name: test_crate::HashMap::{impl Destruct for HashMap<S>[@TraitClause0]}::drop_in_place
+unsafe fn {impl Destruct for HashMap<S>[@TraitClause0]}::drop_in_place<S>(_1: *mut HashMap<S>[@TraitClause0])
+where
+    [@TraitClause0]: Sized<S>,
+= <missing>
+
+// Full name: test_crate::HashMap::{impl Destruct for HashMap<S>[@TraitClause0]}
+impl<S> Destruct for HashMap<S>[@TraitClause0]
+where
+    [@TraitClause0]: Sized<S>,
+{
+    fn drop_in_place = {impl Destruct for HashMap<S>[@TraitClause0]}::drop_in_place<S>[@TraitClause0]
+    non-dyn-compatible
+}
+
+// Full name: test_crate::{HashMap<S>[@TraitClause0]}::get
+pub fn get<S, Q, Clause2_Type>(_1: HashMap<S>[@TraitClause0], _2: Q)
+where
+    [@TraitClause0]: Sized<S>,
+    [@TraitClause1]: Sized<Q>,
+    [@TraitClause2]: Trait<Q, Clause2_Type>,
+{
+    let _0: (); // return
+    let _x_1: HashMap<S>[@TraitClause0]; // arg #1
+    let _k_2: Q; // arg #2
+
+    _0 = ()
+    _0 = ()
+    conditional_drop[{built_in impl Destruct for Q}] _k_2
+    conditional_drop[{impl Destruct for HashMap<S>[@TraitClause0]}<S>[@TraitClause0]] _x_1
+    return
+}
+
+// Full name: test_crate::top_level_get
+pub fn top_level_get<S, Q, Clause2_Type>(_1: HashMap<S>[@TraitClause0], _2: Q)
+where
+    [@TraitClause0]: Sized<S>,
+    [@TraitClause1]: Sized<Q>,
+    [@TraitClause2]: Trait<Q, Clause2_Type>,
+{
+    let _0: (); // return
+    let _x_1: HashMap<S>[@TraitClause0]; // arg #1
+    let _k_2: Q; // arg #2
+
+    _0 = ()
+    _0 = ()
+    conditional_drop[{built_in impl Destruct for Q}] _k_2
+    conditional_drop[{impl Destruct for HashMap<S>[@TraitClause0]}<S>[@TraitClause0]] _x_1
+    return
+}
+
+// Full name: test_crate::test1
+pub fn test1(_1: HashMap<()>[{built_in impl Sized for ()}])
+{
+    let _0: (); // return
+    let map_1: HashMap<()>[{built_in impl Sized for ()}]; // arg #1
+    let _2: (); // anonymous local
+    let _3: HashMap<()>[{built_in impl Sized for ()}]; // anonymous local
+    let _4: (); // anonymous local
+
+    _0 = ()
+    storage_live(_2)
+    storage_live(_3)
+    _3 = move map_1
+    storage_live(_4)
+    _4 = ()
+    _2 = top_level_get<(), (), ()>[{built_in impl Sized for ()}, {built_in impl Sized for ()}, {impl Trait<()> for ()}](move _3, move _4)
+    storage_dead(_4)
+    storage_dead(_3)
+    storage_dead(_2)
+    _0 = ()
+    return
+}
+
+// Full name: test_crate::test2
+pub fn test2(_1: HashMap<()>[{built_in impl Sized for ()}])
+{
+    let _0: (); // return
+    let map_1: HashMap<()>[{built_in impl Sized for ()}]; // arg #1
+    let _2: (); // anonymous local
+    let _3: HashMap<()>[{built_in impl Sized for ()}]; // anonymous local
+    let _4: (); // anonymous local
+
+    _0 = ()
+    storage_live(_2)
+    storage_live(_3)
+    _3 = move map_1
+    storage_live(_4)
+    _4 = ()
+    _2 = get<(), (), ()>[{built_in impl Sized for ()}, {built_in impl Sized for ()}, {impl Trait<()> for ()}](move _3, move _4)
+    storage_dead(_4)
+    storage_dead(_3)
+    storage_dead(_2)
+    _0 = ()
+    return
+}
+
+
+

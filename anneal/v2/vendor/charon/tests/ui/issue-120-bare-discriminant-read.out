@@ -1,0 +1,123 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
+    non-dyn-compatible
+}
+
+unsafe fn core::marker::Destruct::drop_in_place<Self>(_1: *mut Self)
+= <missing>
+
+// Full name: core::option::Option
+#[lang_item("Option")]
+pub enum Option<T>
+where
+    [@TraitClause0]: Sized<T>,
+{
+  None,
+  Some(T),
+}
+
+// Full name: core::option::Option::{impl Destruct for Option<T>[@TraitClause0]}::drop_in_place
+unsafe fn {impl Destruct for Option<T>[@TraitClause0]}::drop_in_place<T>(_1: *mut Option<T>[@TraitClause0])
+where
+    [@TraitClause0]: Sized<T>,
+= <missing>
+
+// Full name: core::option::Option::{impl Destruct for Option<T>[@TraitClause0]}
+impl<T> Destruct for Option<T>[@TraitClause0]
+where
+    [@TraitClause0]: Sized<T>,
+{
+    fn drop_in_place = {impl Destruct for Option<T>[@TraitClause0]}::drop_in_place<T>[@TraitClause0]
+    non-dyn-compatible
+}
+
+fn UNIT_METADATA()
+{
+    let _0: (); // return
+
+    _0 = ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
+// Full name: test_crate::discriminant_value
+fn discriminant_value<'_0, T>(_1: &'_0 Option<T>[@TraitClause0]) -> isize
+where
+    [@TraitClause0]: Sized<T>,
+{
+    let _0: isize; // return
+    let opt_1: &'1 Option<T>[@TraitClause0]; // arg #1
+    let _2: &'2 Option<T>[@TraitClause0]; // anonymous local
+
+    storage_live(_2)
+    _2 = &(*opt_1)
+    _0 = @discriminant((*_2))
+    storage_dead(_2)
+    return
+}
+
+// Full name: test_crate::is_some
+fn is_some<T>(_1: Option<T>[@TraitClause0]) -> bool
+where
+    [@TraitClause0]: Sized<T>,
+{
+    let _0: bool; // return
+    let opt_1: Option<T>[@TraitClause0]; // arg #1
+    let _2: isize; // anonymous local
+    let _3: &'1 Option<T>[@TraitClause0]; // anonymous local
+    let _4: &'2 Option<T>[@TraitClause0]; // anonymous local
+
+    storage_live(_2)
+    storage_live(_3)
+    storage_live(_4)
+    _4 = &opt_1
+    _3 = &(*_4)
+    _2 = discriminant_value<'4, T>[@TraitClause0](move _3)
+    storage_dead(_3)
+    _0 = move _2 != const 0 : isize
+    storage_dead(_2)
+    storage_dead(_4)
+    drop[{impl Destruct for Option<T>[@TraitClause0]}<T>[@TraitClause0]] opt_1
+    return
+}
+
+// Full name: test_crate::my_is_some
+fn my_is_some<T>(_1: Option<T>[@TraitClause0]) -> isize
+where
+    [@TraitClause0]: Sized<T>,
+{
+    let _0: isize; // return
+    let opt_1: Option<T>[@TraitClause0]; // arg #1
+
+    match opt_1 {
+        Option::None => {
+            _0 = const 0 : isize
+        },
+        Option::Some => {
+            _0 = const 1 : isize
+        },
+    }
+    drop[{impl Destruct for Option<T>[@TraitClause0]}<T>[@TraitClause0]] opt_1
+    return
+}
+
+
+

@@ -1,0 +1,36 @@
+# Final LLBC before serialization:
+
+// Full name: core::result::Result::<u32, u32>
+#[lang_item("Result")]
+pub enum Result::<u32, u32> {
+  Ok(u32),
+  Err(u32),
+}
+
+// Full name: test_crate::main
+fn main()
+{
+    let _0: (); // return
+    let res_1: Result::<u32, u32>; // local
+    let n_2: u32; // local
+
+    _0 = ()
+    storage_live(res_1)
+    res_1 = Result::<u32, u32>::Ok { 0: const 0 : u32 }
+    match res_1 {
+        Result::<u32, u32>::Ok => {
+        },
+        _ => {
+            panic(core::panicking::panic)
+        },
+    }
+    storage_live(n_2)
+    n_2 = copy (res_1 as variant Result::<u32, u32>::Ok).0
+    _0 = ()
+    storage_dead(n_2)
+    storage_dead(res_1)
+    return
+}
+
+
+

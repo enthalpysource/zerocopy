@@ -1,0 +1,124 @@
+# Final LLBC before serialization:
+
+// Full name: core::fmt::Arguments
+#[lang_item("format_arguments")]
+pub opaque type Arguments<'a>
+
+// Full name: core::fmt::{Arguments<'a>}::from_str_nonconst
+pub fn from_str_nonconst<'a>(_1: &'static Str) -> Arguments<'a>
+= <opaque>
+
+// Full name: core::fmt::{Arguments<'a>}::from_str
+pub fn from_str<'a>(_1: &'static Str) -> Arguments<'a>
+= <opaque>
+
+// Full name: test_crate::panic1
+fn panic1()
+{
+    let _0: (); // return
+
+    _0 = ()
+    panic(core::panicking::panic)
+}
+
+// Full name: test_crate::panic2
+fn panic2()
+{
+    let _0: (); // return
+    let _1: Arguments<'1>; // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    _1 = from_str<'2>(const "O no!")
+    panic(core::panicking::panic_fmt)
+}
+
+// Full name: test_crate::panic3
+fn panic3()
+{
+    let _0: (); // return
+    let _1: Arguments<'1>; // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    _1 = from_str_nonconst<'2>(const "O no!")
+    panic(core::panicking::panic_fmt)
+}
+
+// Full name: test_crate::panic4
+fn panic4()
+{
+    let _0: (); // return
+    let _1: bool; // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    _1 = const false
+    assert(move _1 == true) else panic(core::panicking::panic)
+    storage_dead(_1)
+    _0 = ()
+    return
+}
+
+// Full name: test_crate::panic5
+fn panic5()
+{
+    let _0: (); // return
+    let _1: bool; // anonymous local
+    let _2: Arguments<'1>; // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    _1 = const false
+    if move _1 {
+    } else {
+        storage_live(_2)
+        _2 = from_str<'2>(const "assert failed")
+        panic(core::panicking::panic_fmt)
+    }
+    storage_dead(_1)
+    _0 = ()
+    return
+}
+
+// Full name: test_crate::panic6
+fn panic6()
+{
+    let _0: (); // return
+
+    _0 = ()
+    panic(core::panicking::panic)
+}
+
+// Full name: test_crate::panic7
+fn panic7()
+{
+    let _0: (); // return
+    let _1: Arguments<'1>; // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    _1 = from_str_nonconst<'2>(const "internal error: entered unreachable code: can't reach this")
+    panic(core::panicking::panic_fmt)
+}
+
+// Full name: test_crate::panic8
+fn panic8()
+{
+    let _0: (); // return
+
+    _0 = ()
+    panic(core::panicking::panic)
+}
+
+// Full name: test_crate::panic9
+fn panic9()
+{
+    let _0: (); // return
+
+    _0 = ()
+    panic(std::panicking::begin_panic)
+}
+
+
+

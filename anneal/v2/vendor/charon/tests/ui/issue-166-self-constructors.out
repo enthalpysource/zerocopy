@@ -1,0 +1,38 @@
+# Final LLBC before serialization:
+
+// Full name: test_crate::Foo
+enum Foo {
+  A,
+  B(usize),
+}
+
+// Full name: test_crate::{Foo}::b
+pub fn b() -> Foo
+{
+    let _0: Foo; // return
+
+    _0 = Foo::B { 0: const 0 : usize }
+    return
+}
+
+// Full name: test_crate::Bar
+struct Bar<'a> {
+  r: &'a i32,
+}
+
+// Full name: test_crate::{Bar<'a>}::new
+fn new<'a>(_1: &'a i32) -> Bar<'a>
+{
+    let _0: Bar<'1>; // return
+    let r_1: &'3 i32; // arg #1
+    let _2: &'4 i32; // anonymous local
+
+    storage_live(_2)
+    _2 = copy r_1
+    _0 = Bar { r: move _2 }
+    storage_dead(_2)
+    return
+}
+
+
+
