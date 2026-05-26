@@ -1,0 +1,50 @@
+# Final LLBC before serialization:
+
+opaque type core::marker::MetaSized::{vtable}
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+struct test_crate::DynableTrait::{vtable}<Ty0> {
+  size: usize,
+  align: usize,
+  drop: unsafe fn(*mut (dyn DynableTrait<Ty0>)),
+  super_trait_0: &'static core::marker::MetaSized::{vtable},
+}
+
+// Full name: test_crate::DynableTrait
+trait DynableTrait<Self, Self_DynableTraitType>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self_DynableTraitType: Sized)
+    vtable: test_crate::DynableTrait::{vtable}<Self_DynableTraitType>
+}
+
+// Full name: test_crate::Trait
+trait Trait<Self, Self_TraitType, Self_Clause2_DynableTraitType>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self_TraitType: MetaSized)
+    proof ImpliedClause2: (Self_TraitType: DynableTrait<Self_Clause2_DynableTraitType>)
+    vtable: test_crate::Trait::{vtable}<Self_TraitType>
+}
+
+// Full name: test_crate::{impl Trait<(dyn DynableTrait<()> + 'static), ()> for ()}
+impl "impl_Trait_for_unit" Trait<(dyn DynableTrait<()> + 'static), ()> for () {
+    proof ImpliedClause0: ((): MetaSized) = {built_in impl MetaSized for ()}
+    proof ImpliedClause1: ((dyn DynableTrait<()> + 'static): MetaSized) = {built_in impl MetaSized for (dyn DynableTrait<()> + 'static)}
+    proof ImpliedClause2: ((dyn DynableTrait<()> + 'static): DynableTrait<()>) = DynableTrait<(dyn DynableTrait<()> + 'static), ()>
+    vtable: impl_Trait_for_unit::{vtable}
+}
+
+
+

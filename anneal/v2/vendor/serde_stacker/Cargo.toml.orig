@@ -1,0 +1,32 @@
+[package]
+name = "serde_stacker"
+version = "0.1.14"
+authors = ["David Tolnay <dtolnay@gmail.com>"]
+categories = ["encoding"]
+description = "Serde adapter that avoids stack overflow by dynamically growing the stack"
+documentation = "https://docs.rs/serde_stacker"
+edition = "2021"
+keywords = ["serde", "serialization"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/dtolnay/serde-stacker"
+rust-version = "1.67"
+
+[dependencies]
+serde_core = { version = "1.0.220", default-features = false, features = ["alloc"] }
+stacker = "0.1.15"
+
+[target.'cfg(any())'.dependencies]
+serde = { version = "1.0.220", default-features = false }
+
+[dev-dependencies]
+serde = "1.0.220"
+serde_json = { version = "1.0.100", features = ["unbounded_depth"] }
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+rustdoc-args = [
+    "--generate-link-to-definition",
+    "--extern-html-root-url=core=https://doc.rust-lang.org",
+    "--extern-html-root-url=alloc=https://doc.rust-lang.org",
+    "--extern-html-root-url=std=https://doc.rust-lang.org",
+]

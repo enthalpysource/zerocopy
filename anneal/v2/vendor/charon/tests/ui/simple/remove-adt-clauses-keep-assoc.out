@@ -1,0 +1,186 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
+    non-dyn-compatible
+}
+
+unsafe fn core::marker::Destruct::drop_in_place<Self>(_1: *mut Self)
+= <opaque>
+
+// Full name: test_crate::HasAssoc
+trait HasAssoc<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self::Output: Sized)
+    type Output
+    vtable: test_crate::HasAssoc::{vtable}<Self::Output>
+}
+
+// Full name: test_crate::Direct
+struct Direct<T>
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: HasAssoc),
+{
+  T,
+}
+
+// Full name: test_crate::Direct::{impl Destruct for Direct<T>[TraitClause0, TraitClause1]}::drop_in_place
+unsafe fn impl_Destruct_for_Direct::drop_in_place<T>(_1: *mut Direct<T>[TraitClause0, TraitClause1])
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: HasAssoc),
+{
+    let _0: (); // return
+    let _1: &'1 mut Direct<T>[TraitClause0, TraitClause1]; // arg #1
+
+    _0 = ()
+    drop[{built_in impl Destruct for T}::drop_in_place] ((*_1)).0
+    return
+}
+
+// Full name: test_crate::Direct::{impl Destruct for Direct<T>[TraitClause0, TraitClause1]}
+impl<T> "impl_Destruct_for_Direct" Destruct for Direct<T>[TraitClause0, TraitClause1]
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: HasAssoc),
+{
+    fn drop_in_place = impl_Destruct_for_Direct::drop_in_place<T>[TraitClause0, TraitClause1]
+    non-dyn-compatible
+}
+
+// Full name: test_crate::BaseWithAssoc
+trait BaseWithAssoc<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self::Item: Sized)
+    type Item
+    vtable: test_crate::BaseWithAssoc::{vtable}<Self::Item>
+}
+
+// Full name: test_crate::DerivedNoAssoc
+trait DerivedNoAssoc<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: BaseWithAssoc)
+    vtable: test_crate::DerivedNoAssoc::{vtable}<Self::ImpliedClause1::Item>
+}
+
+// Full name: test_crate::Transitive
+struct Transitive<T>
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: DerivedNoAssoc),
+{
+  T,
+}
+
+// Full name: test_crate::Transitive::{impl Destruct for Transitive<T>[TraitClause0, TraitClause1]}::drop_in_place
+unsafe fn impl_Destruct_for_Transitive::drop_in_place<T>(_1: *mut Transitive<T>[TraitClause0, TraitClause1])
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: DerivedNoAssoc),
+{
+    let _0: (); // return
+    let _1: &'1 mut Transitive<T>[TraitClause0, TraitClause1]; // arg #1
+
+    _0 = ()
+    drop[{built_in impl Destruct for T}::drop_in_place] ((*_1)).0
+    return
+}
+
+// Full name: test_crate::Transitive::{impl Destruct for Transitive<T>[TraitClause0, TraitClause1]}
+impl<T> "impl_Destruct_for_Transitive" Destruct for Transitive<T>[TraitClause0, TraitClause1]
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: DerivedNoAssoc),
+{
+    fn drop_in_place = impl_Destruct_for_Transitive::drop_in_place<T>[TraitClause0, TraitClause1]
+    non-dyn-compatible
+}
+
+// Full name: test_crate::MarkerParent
+trait MarkerParent<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    vtable: test_crate::MarkerParent::{vtable}
+}
+
+// Full name: test_crate::MarkerChild
+trait MarkerChild<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: MarkerParent)
+    vtable: test_crate::MarkerChild::{vtable}
+}
+
+// Full name: test_crate::Marker
+struct Marker<T> {
+  T,
+}
+
+// Full name: test_crate::Marker::{impl Destruct for Marker<T>}::drop_in_place
+unsafe fn impl_Destruct_for_Marker::drop_in_place<T>(_1: *mut Marker<T>)
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: MarkerChild),
+{
+    let _0: (); // return
+    let _1: &'1 mut Marker<T>; // arg #1
+
+    _0 = ()
+    drop[{built_in impl Destruct for T}::drop_in_place] ((*_1)).0
+    return
+}
+
+// Full name: test_crate::Marker::{impl Destruct for Marker<T>}
+impl<T> "impl_Destruct_for_Marker" Destruct for Marker<T>
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: MarkerChild),
+{
+    fn drop_in_place = impl_Destruct_for_Marker::drop_in_place<T>[TraitClause0, TraitClause1]
+    non-dyn-compatible
+}
+
+// Full name: test_crate::use_all
+fn use_all<T, U, V>(_x_1: Direct<T>[TraitClause0, TraitClause3], _y_2: Transitive<U>[TraitClause1, TraitClause4], _z_3: Marker<V>)
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (U: Sized),
+    TraitClause2: (V: Sized),
+    TraitClause3: (T: HasAssoc),
+    TraitClause4: (U: DerivedNoAssoc),
+    TraitClause5: (V: MarkerChild),
+{
+    let _0: (); // return
+    let _x_1: Direct<T>[TraitClause0, TraitClause3]; // arg #1
+    let _y_2: Transitive<U>[TraitClause1, TraitClause4]; // arg #2
+    let _z_3: Marker<V>; // arg #3
+
+    _0 = ()
+    _0 = ()
+    conditional_drop[impl_Destruct_for_Marker::drop_in_place<V>[TraitClause2, TraitClause5]] _z_3
+    conditional_drop[impl_Destruct_for_Transitive::drop_in_place<U>[TraitClause1, TraitClause4]] _y_2
+    conditional_drop[impl_Destruct_for_Direct::drop_in_place<T>[TraitClause0, TraitClause3]] _x_1
+    return
+}
+
+
+

@@ -1,0 +1,76 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: core::option::Option
+#[lang_item("Option")]
+pub enum Option<T>
+where
+    TraitClause0: (T: Sized),
+{
+  None,
+  Some(T),
+}
+
+// Full name: test_crate::Link
+pub trait Link<Self, T>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (T: Sized)
+    vtable: test_crate::Link::{vtable}<T>
+}
+
+// Full name: test_crate::{impl Link<T> for U}
+impl<T, U> "impl_Link_for_T" Link<T> for U
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (U: Sized),
+{
+    proof ImpliedClause0: (U: MetaSized) = TraitClause1::ImpliedClause0
+    proof ImpliedClause1: (T: Sized) = TraitClause0
+    vtable: impl_Link_for_T::{vtable}<T, U>[TraitClause0, TraitClause1]
+}
+
+// Full name: test_crate::Trait
+pub trait Trait<Self, T>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (T: Sized)
+    type Type<U>
+    where
+        TraitClause0_1: (U: Sized),
+        proof ImpliedClause0: (Self::Type<U>[TraitClause0_1]: Sized),
+        proof ImpliedClause1: (Self::Type<U>[TraitClause0_1]: Link<T>);
+    non-dyn-compatible
+}
+
+// Full name: test_crate::Foo
+pub struct Foo {}
+
+// Full name: test_crate::{impl Trait<Option<T>[TraitClause0]> for Foo}
+impl<T> "impl_Trait_Option_for_Foo" Trait<Option<T>[TraitClause0]> for Foo
+where
+    TraitClause0: (T: Sized),
+{
+    proof ImpliedClause0: (Foo: MetaSized) = {built_in impl MetaSized for Foo}
+    proof ImpliedClause1: (Option<T>[TraitClause0]: Sized) = {built_in impl Sized for Option<T>[TraitClause0]}
+    type Type<U> = (T, U)
+    where
+        TraitClause0_1: (U: Sized),
+        proof ImpliedClause0: ((T, U): Sized) = {built_in impl Sized for (T, U)},
+        proof ImpliedClause1: ((T, U): Link<Option<T>[TraitClause0]>) = impl_Link_for_T<Option<T>[TraitClause0], (T, U)>[{built_in impl Sized for Option<T>[TraitClause0]}, {built_in impl Sized for (T, U)}];
+    non-dyn-compatible
+}
+
+
+
