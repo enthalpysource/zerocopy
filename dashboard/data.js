@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779811654645,
+  "lastUpdate": 1779812390613,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -15692,6 +15692,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 729,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "d0babbacd343fc7132a8171c5eeb7b1754561159",
+          "message": "[anneal][exocrate] Upgrade to toml_const 1.3.0",
+          "timestamp": "2026-05-26T12:42:10Z",
+          "url": "https://github.com/google/zerocopy/pull/3415/commits/d0babbacd343fc7132a8171c5eeb7b1754561159"
+        },
+        "date": 1779812387129,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 95,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 535,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 710,
             "unit": "seconds"
           }
         ]
