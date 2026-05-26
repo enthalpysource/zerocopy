@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779750287349,
+  "lastUpdate": 1779811654645,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -8163,6 +8163,31 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3404/commits/fafcee46f6866df9d56f36cf6f7d069b830b5452"
         },
         "date": 1779749334139,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 8,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "d0babbacd343fc7132a8171c5eeb7b1754561159",
+          "message": "[anneal][exocrate] Upgrade to toml_const 1.3.0",
+          "timestamp": "2026-05-26T12:42:10Z",
+          "url": "https://github.com/google/zerocopy/pull/3415/commits/d0babbacd343fc7132a8171c5eeb7b1754561159"
+        },
+        "date": 1779811651855,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
