@@ -1,0 +1,135 @@
+//! The Charon driver, which calls Rustc with callbacks to compile some Rust
+//! crate to LLBC.
+// For rustdoc: prevents overflows
+#![recursion_limit = "256"]
+#![feature(rustc_private)]
+#![allow(clippy::arc_with_non_send_sync)]
+#![allow(clippy::borrowed_box)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::manual_map)]
+#![allow(clippy::mem_replace_with_default)]
+#![allow(clippy::useless_format)]
+#![feature(deref_patterns)]
+#![feature(iter_array_chunks)]
+#![feature(iterator_try_collect)]
+#![feature(macro_metavar_expr)]
+#![feature(sized_hierarchy)]
+#![feature(trait_alias)]
+#![feature(type_changing_struct_update)]
+
+extern crate rustc_abi;
+extern crate rustc_apfloat;
+extern crate rustc_ast;
+extern crate rustc_ast_pretty;
+extern crate rustc_const_eval;
+extern crate rustc_data_structures;
+extern crate rustc_driver;
+extern crate rustc_error_messages;
+extern crate rustc_errors;
+extern crate rustc_hashes;
+extern crate rustc_hir;
+extern crate rustc_hir_analysis;
+extern crate rustc_index;
+extern crate rustc_infer;
+extern crate rustc_interface;
+extern crate rustc_lexer;
+extern crate rustc_middle;
+extern crate rustc_mir_build;
+extern crate rustc_mir_transform;
+extern crate rustc_session;
+extern crate rustc_span;
+extern crate rustc_target;
+extern crate rustc_trait_selection;
+extern crate rustc_type_ir;
+
+#[macro_use]
+extern crate charon_lib;
+
+mod driver;
+#[macro_use]
+pub mod hax;
+mod translate;
+
+use charon_lib::{export, logger, transform::run_transformation_passes};
+use std::{fmt, panic};
+
+pub enum CharonFailure {
+    /// The usize is the number of errors.
+    CharonError(usize),
+    RustcError,
+    Panic,
+    Serialize,
+}
+
+impl fmt::Display for CharonFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CharonFailure::RustcError => write!(f, "Code failed to compile")?,
+            CharonFailure::CharonError(err_count) => write!(
+                f,
+                "Charon failed to translate this code ({err_count} errors)"
+            )?,
+            CharonFailure::Panic => write!(f, "Compilation panicked")?,
+            CharonFailure::Serialize => write!(f, "Could not serialize output file")?,
+        }
+        Ok(())
+    }
+}
+
+/// Run charon. Returns the number of warnings generated.
+fn run_charon() -> Result<usize, CharonFailure> {
+    // Run the driver machinery.
+    let Some((mut ctx, options)) = driver::run_rustc_driver()? else {
+        // We didn't run charon.
+        return Ok(0);
+    };
+
+    // The bulk of the translation is done, we no longer need to interact with rustc internals. We
+    // run several passes that simplify the items and cleanup the bodies.
+    run_transformation_passes(&options, &mut ctx);
+
+    let error_count = ctx.errors.borrow().error_count;
+
+    // # Final step: generate the files.
+    let targets = options.targets(&ctx.translated.crate_name);
+    trace!("Targets: {:?}", targets);
+    export::CrateData::new(ctx)
+        .serialize_to_files(targets)
+        .map_err(|()| CharonFailure::Serialize)?;
+
+    if options.error_on_warnings && error_count != 0 {
+        return Err(CharonFailure::CharonError(error_count));
+    }
+
+    Ok(error_count)
+}
+
+fn main() {
+    // Initialize the logger
+    logger::initialize_logger();
+
+    // Catch any and all panics coming from charon to display a clear error.
+    let res = panic::catch_unwind(run_charon)
+        .map_err(|_| CharonFailure::Panic)
+        .and_then(|x| x);
+
+    match res {
+        Ok(warn_count) => {
+            if warn_count != 0 {
+                let msg = format!("The extraction generated {} warnings", warn_count);
+                eprintln!("warning: {}", msg);
+            }
+        }
+        Err(err) => {
+            log::error!("{err}");
+            let exit_code = match err {
+                CharonFailure::CharonError(_) | CharonFailure::Serialize => 1,
+                CharonFailure::RustcError => 2,
+                // This is a real panic, exit with the standard rust panic error code.
+                CharonFailure::Panic => 101,
+            };
+            std::process::exit(exit_code);
+        }
+    }
+}

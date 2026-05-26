@@ -1,0 +1,523 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: core::default::Default
+#[lang_item("Default")]
+pub trait Default<Self>
+{
+    proof ImpliedClause0: (Self: Sized)
+    fn default = core::default::Default::default<Self>[Self]
+    non-dyn-compatible
+}
+
+#[lang_item("default_fn")]
+pub fn core::default::Default::default<Self>() -> Self
+where
+    TraitClause0: (Self: Default),
+= <opaque>
+
+// Full name: core::default::{impl Default for u32}::default
+pub fn impl_Default_for_u32::default() -> u32
+= <opaque>
+
+// Full name: core::fmt::Arguments
+#[lang_item("format_arguments")]
+pub opaque type Arguments<'a>
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = drop_in_place<Self>
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct::drop_in_place
+unsafe fn drop_in_place<Self>(_1: *mut Self)
+= <opaque>
+
+// Full name: core::option::Option
+#[lang_item("Option")]
+pub enum Option<T>
+where
+    TraitClause0: (T: Sized),
+{
+  None,
+  Some(T),
+}
+
+// Full name: core::panicking::AssertKind
+pub enum AssertKind {
+  Eq,
+  Ne,
+  Match,
+}
+
+// Full name: core::slice::{[T]}::len
+#[lang_item("slice_len_fn")]
+pub fn len<'_0, T>(_1: &'_0 [T]) -> usize
+where
+    TraitClause0: (T: Sized),
+= <opaque>
+
+// Full name: test_crate::function_call
+fn function_call(_1: u32)
+{
+    let _0: (); // return
+    let _1: u32; // arg #1
+
+    _0 = ()
+    _0 = ()
+    return
+}
+
+// Full name: test_crate::sum
+pub fn sum<'_0>(s_1: &'_0 [u32]) -> u32
+{
+    let _0: u32; // return
+    let s_1: &'1 [u32]; // arg #1
+    let sum_2: u32; // local
+    let i_3: usize; // local
+    let _4: (); // anonymous local
+    let _5: u32; // anonymous local
+    let _6: u32; // anonymous local
+    let _7: u32; // anonymous local
+    let _8: bool; // anonymous local
+    let _9: usize; // anonymous local
+    let _10: usize; // anonymous local
+    let _11: &'2 [u32]; // anonymous local
+    let _12: u32; // anonymous local
+    let _13: usize; // anonymous local
+    let _14: u32; // anonymous local
+    let _15: usize; // anonymous local
+    let _16: u32; // anonymous local
+    let _17: bool; // anonymous local
+    let _18: u32; // anonymous local
+    let _19: u32; // anonymous local
+    let _20: u32; // anonymous local
+    let _21: (); // anonymous local
+    let _22: u32; // anonymous local
+    let _23: u32; // anonymous local
+    let _24: u32; // anonymous local
+    let _25: &'_ [u32]; // anonymous local
+    let _26: &'_ u32; // anonymous local
+
+    storage_live(_7)
+    storage_live(_14)
+    storage_live(_15)
+    storage_live(_20)
+    storage_live(_24)
+    storage_live(sum_2)
+    // `let sum`
+    sum_2 = const 0u32
+    storage_live(i_3)
+    // `let i`
+    //  indented sub-comment
+    // unindented sub-comment
+    i_3 = const 0usize
+    storage_live(_4)
+    storage_live(_5)
+    storage_live(_6)
+    // Function call
+    _6 = copy sum_2
+    _7 = copy _6 panic.+ const 2u32
+    _5 = move _7
+    storage_dead(_6)
+    _4 = function_call(move _5)
+    storage_dead(_5)
+    storage_dead(_4)
+    // Start of loop
+    loop {
+        storage_live(_8)
+        storage_live(_9)
+        _9 = copy i_3
+        storage_live(_10)
+        storage_live(_11)
+        _11 = &(*s_1) with_metadata(copy s_1.metadata)
+        _10 = len<'4, u32>[{built_in impl Sized for u32}](move _11)
+        storage_dead(_11)
+        _8 = move _9 < move _10
+        if move _8 {
+        } else {
+            break 0
+        }
+        storage_dead(_10)
+        storage_dead(_9)
+        storage_live(_12)
+        storage_live(_13)
+        // Add to running sum
+        _13 = copy i_3
+        storage_live(_25)
+        _25 = &(*s_1) with_metadata(copy s_1.metadata)
+        storage_live(_26)
+        _26 = @SliceIndexShared<'_, u32>(move _25, copy _13)
+        _12 = copy (*_26)
+        _14 = copy sum_2 panic.+ copy _12
+        sum_2 = move _14
+        storage_dead(_12)
+        storage_dead(_13)
+        // Increment `i`
+        _15 = copy i_3 panic.+ const 1usize
+        i_3 = move _15
+        // Before end of loop
+        storage_dead(_8)
+        continue 0
+    }
+    storage_dead(_10)
+    storage_dead(_9)
+    storage_dead(_8)
+    storage_live(_16)
+    storage_live(_17)
+    storage_live(_18)
+    // Assign the result of an `if`.
+    _18 = copy sum_2
+    _17 = move _18 > const 10u32
+    if move _17 {
+        storage_dead(_18)
+        storage_live(_19)
+        // sum + 100
+        _19 = copy sum_2
+        _20 = copy _19 panic.+ const 100u32
+        _16 = move _20
+        storage_dead(_19)
+    } else {
+        storage_dead(_18)
+        // let sum untouched
+        _16 = copy sum_2
+    }
+    storage_dead(_17)
+    sum_2 = move _16
+    storage_dead(_16)
+    storage_live(_21)
+    storage_live(_22)
+    storage_live(_23)
+    // Function call
+    _23 = copy sum_2
+    _24 = copy _23 panic.+ const 2u32
+    _22 = move _24
+    storage_dead(_23)
+    _21 = function_call(move _22)
+    storage_dead(_22)
+    storage_dead(_21)
+    // Return final value
+    _0 = copy sum_2
+    storage_dead(i_3)
+    storage_dead(sum_2)
+    return
+}
+
+// Full name: test_crate::Foo
+struct Foo {
+  x: u32,
+  y: u32,
+}
+
+// Full name: test_crate::{impl Default for Foo}::default
+pub fn impl_Default_for_Foo::default() -> Foo
+{
+    let _0: Foo; // return
+    let _1: u32; // anonymous local
+    let _2: u32; // anonymous local
+
+    storage_live(_1)
+    _1 = impl_Default_for_u32::default()
+    storage_live(_2)
+    _2 = impl_Default_for_u32::default()
+    _0 = Foo { x: move _1, y: move _2 }
+    storage_dead(_2)
+    storage_dead(_1)
+    return
+}
+
+// Full name: test_crate::{impl Default for Foo}
+impl "impl_Default_for_Foo" Default for Foo {
+    proof ImpliedClause0: (Foo: Sized) = {built_in impl Sized for Foo}
+    fn default = impl_Default_for_Foo::default
+    non-dyn-compatible
+}
+
+// Full name: test_crate::Bar
+struct Bar {
+  x: u32,
+  super_long_field_name: u32,
+}
+
+// Full name: test_crate::{impl Default for Bar}::default
+pub fn impl_Default_for_Bar::default() -> Bar
+{
+    let _0: Bar; // return
+    let _1: u32; // anonymous local
+    let _2: u32; // anonymous local
+
+    storage_live(_1)
+    _1 = impl_Default_for_u32::default()
+    storage_live(_2)
+    _2 = impl_Default_for_u32::default()
+    _0 = Bar { x: move _1, super_long_field_name: move _2 }
+    storage_dead(_2)
+    storage_dead(_1)
+    return
+}
+
+// Full name: test_crate::{impl Default for Bar}
+impl "impl_Default_for_Bar" Default for Bar {
+    proof ImpliedClause0: (Bar: Sized) = {built_in impl Sized for Bar}
+    fn default = impl_Default_for_Bar::default
+    non-dyn-compatible
+}
+
+// Full name: test_crate::eat
+fn eat<T>(_1: T)
+where
+    TraitClause0: (T: Sized),
+{
+    let _0: (); // return
+    let _1: T; // arg #1
+
+    _0 = ()
+    _0 = ()
+    conditional_drop[{built_in impl Destruct for T}::drop_in_place] _1
+    return
+}
+
+// Full name: test_crate::foo
+fn foo()
+{
+    let _0: (); // return
+    let x_1: u32; // local
+    let y_2: u32; // local
+    let _3: Foo; // anonymous local
+    let _4: (); // anonymous local
+    let _5: Foo; // anonymous local
+    let _6: u32; // anonymous local
+    let _7: u32; // anonymous local
+    let x_8: u32; // local
+    let super_long_field_name_9: u32; // local
+    let _10: Bar; // anonymous local
+    let _11: (); // anonymous local
+    let _12: Bar; // anonymous local
+    let _13: u32; // anonymous local
+    let _14: u32; // anonymous local
+    let a_15: [u32; 10usize]; // local
+    let _16: (&'3 u32, &'4 u32); // anonymous local
+    let _17: &'5 u32; // anonymous local
+    let _18: usize; // anonymous local
+    let _19: &'6 u32; // anonymous local
+    let left_val_20: &'7 u32; // local
+    let right_val_21: &'8 u32; // local
+    let _22: bool; // anonymous local
+    let _23: u32; // anonymous local
+    let _24: u32; // anonymous local
+    let kind_25: AssertKind; // local
+    let _26: AssertKind; // anonymous local
+    let _27: &'9 u32; // anonymous local
+    let _28: &'10 u32; // anonymous local
+    let _29: &'11 u32; // anonymous local
+    let _30: &'12 u32; // anonymous local
+    let _31: Option<Arguments<'19>>[{built_in impl Sized for Arguments<'19>}]; // anonymous local
+    let _32: &'22 u32; // anonymous local
+    let _33: &'23 u32; // anonymous local
+    let _34: &'31 u32; // anonymous local
+    let _35: u32; // anonymous local
+    let _36: &'_ [u32; 10usize]; // anonymous local
+    let _37: &'_ u32; // anonymous local
+
+    storage_live(_32)
+    _0 = ()
+    storage_live(_3)
+    // Call `default` and destructure the result
+    _3 = impl_Default_for_Foo::default()
+    storage_live(x_1)
+    x_1 = copy (_3).x
+    storage_live(y_2)
+    y_2 = copy (_3).y
+    storage_dead(_3)
+    storage_live(_4)
+    storage_live(_5)
+    storage_live(_6)
+    // Call `eat` on an aggregate value
+    _6 = copy x_1
+    storage_live(_7)
+    _7 = copy y_2
+    _5 = Foo { x: move _6, y: move _7 }
+    storage_dead(_7)
+    storage_dead(_6)
+    _4 = eat<Foo>[{built_in impl Sized for Foo}](move _5)
+    storage_dead(_5)
+    storage_dead(_4)
+    storage_live(_10)
+    // Call `default` and destructure the result
+    // This is the long field
+    _10 = impl_Default_for_Bar::default()
+    storage_live(x_8)
+    x_8 = copy (_10).x
+    storage_live(super_long_field_name_9)
+    super_long_field_name_9 = copy (_10).super_long_field_name
+    storage_dead(_10)
+    storage_live(_11)
+    storage_live(_12)
+    storage_live(_13)
+    // Call `eat` on an aggregate value
+    _13 = copy x_8
+    storage_live(_14)
+    // This is the long field
+    _14 = copy super_long_field_name_9
+    _12 = Bar { x: move _13, super_long_field_name: move _14 }
+    storage_dead(_14)
+    storage_dead(_13)
+    _11 = eat<Bar>[{built_in impl Sized for Bar}](move _12)
+    storage_dead(_12)
+    storage_dead(_11)
+    storage_live(a_15)
+    // Build an array
+    a_15 = @ArrayRepeat<u32, 10usize>(const 0u32)
+    storage_live(_16)
+    storage_live(_17)
+    storage_live(_18)
+    // `assert_eq`
+    _18 = const 9usize
+    storage_live(_33)
+    storage_live(_34)
+    storage_live(_35)
+    _35 = const 9u32
+    _34 = &_35
+    _33 = move _34
+    storage_live(_36)
+    _36 = &a_15
+    storage_live(_37)
+    _37 = @ArrayIndexShared<'_, u32, 10usize>(move _36, copy _18)
+    _17 = &(*_37)
+    storage_live(_19)
+    _32 = move _33
+    _19 = &(*_32)
+    _16 = (move _17, move _19)
+    storage_dead(_19)
+    storage_dead(_17)
+    storage_live(left_val_20)
+    left_val_20 = copy _16.0
+    storage_live(right_val_21)
+    right_val_21 = copy _16.1
+    storage_live(_22)
+    storage_live(_23)
+    _23 = copy (*left_val_20)
+    storage_live(_24)
+    _24 = copy (*right_val_21)
+    _22 = move _23 == move _24
+    if move _22 {
+    } else {
+        storage_dead(_24)
+        storage_dead(_23)
+        storage_live(kind_25)
+        kind_25 = AssertKind::Eq {  }
+        storage_live(_26)
+        _26 = move kind_25
+        storage_live(_27)
+        storage_live(_28)
+        _28 = &(*left_val_20)
+        _27 = &(*_28)
+        storage_live(_29)
+        storage_live(_30)
+        _30 = &(*right_val_21)
+        _29 = &(*_30)
+        storage_live(_31)
+        _31 = Option::None {  }
+        panic(core::panicking::assert_failed)
+    }
+    storage_dead(_24)
+    storage_dead(_23)
+    storage_dead(_22)
+    storage_dead(right_val_21)
+    storage_dead(left_val_20)
+    storage_dead(_18)
+    storage_dead(_16)
+    _0 = ()
+    storage_dead(a_15)
+    storage_dead(super_long_field_name_9)
+    storage_dead(x_8)
+    storage_dead(y_2)
+    storage_dead(x_1)
+    return
+}
+
+// Full name: test_crate::CONSTANT
+fn CONSTANT() -> u32
+{
+    let _0: u32; // return
+
+    _0 = const 42u32
+    return
+}
+
+// Full name: test_crate::CONSTANT
+const CONSTANT: u32 = CONSTANT()
+
+// Full name: test_crate::thing
+pub fn thing()
+{
+    let _0: (); // return
+    let x_1: u32; // local
+    let _2: u32; // anonymous local
+    let _3: u32; // anonymous local
+    let _4: (); // anonymous local
+    let _5: u32; // anonymous local
+
+    storage_live(_3)
+    _0 = ()
+    storage_live(x_1)
+    storage_live(_2)
+    // This comment belongs above the assignment to `x` and not above intermediate computations.
+    _2 = copy CONSTANT panic.>> const 3i32
+    _3 = copy _2 panic.+ const 12u32
+    x_1 = move _3
+    storage_dead(_2)
+    storage_live(_4)
+    storage_live(_5)
+    _5 = copy x_1
+    _4 = function_call(move _5)
+    storage_dead(_5)
+    storage_dead(_4)
+    _0 = ()
+    storage_dead(x_1)
+    return
+}
+
+// Full name: test_crate::fake_read
+pub fn fake_read(x_1: u32)
+{
+    let _0: (); // return
+    let x_1: u32; // arg #1
+
+    _0 = ()
+    _0 = ()
+    // This statement is translated to a `fake_read`.
+    return
+}
+
+// Full name: test_crate::fool
+fn fool()
+{
+    let _0: (); // return
+    let _1: &'1 str; // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    _1 = const "\n    // Fooled ya"
+    storage_dead(_1)
+    // Fooled ya";
+    _0 = ()
+    return
+}
+
+
+

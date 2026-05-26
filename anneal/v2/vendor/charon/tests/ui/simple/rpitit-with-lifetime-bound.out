@@ -1,0 +1,37 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: test_crate::MyTrait
+pub trait MyTrait<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    type foo_ty<'a, '_1_1>
+    where
+        TypeOutlives0: Self: 'a,
+        RegionOutlives0: 'a: '_1_1,
+        RegionOutlives1: '_1_1: 'a,
+        proof ImpliedClause0: (Self::foo_ty<'a, '_1_1>: Sized);
+    fn foo<'a, TypeOutlives0: Self: 'a> = foo<'a, Self>[Self]
+    non-dyn-compatible
+}
+
+// Full name: test_crate::MyTrait::foo
+pub fn foo<'a, Self>() -> TraitClause0::foo_ty<'a, 'a>
+where
+    TraitClause0: (Self: MyTrait),
+    TypeOutlives0: Self: 'a,
+= <method_without_default_body>
+
+
+

@@ -1,0 +1,37 @@
+error: Error parsing attribute: attribute `rename` should not be empty
+ --> tests/ui/rename_attribute_failure.rs:4:1
+  |
+4 | #[charon::rename("")]
+  | ^^^^^^^^^^^^^^^^^^^^^
+
+error: Error parsing attribute: attribute `rename` should contain a valid identifier
+ --> tests/ui/rename_attribute_failure.rs:7:1
+  |
+7 | #[charon::rename("Test!976?")]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Error parsing attribute: attribute `rename` should contain a valid identifier
+  --> tests/ui/rename_attribute_failure.rs:10:1
+   |
+10 | #[charon::rename("75Test")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Error parsing attribute: the new name should be between quotes: `rename("aaaa")`.
+  --> tests/ui/rename_attribute_failure.rs:13:1
+   |
+13 | #[charon::rename(aaaa)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: There should be at most one `charon::rename("...")` or `aeneas::rename("...")` attribute per declaration
+  --> tests/ui/rename_attribute_failure.rs:18:1
+   |
+18 | pub type TestMultiple = ();
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: Error parsing attribute: Unrecognized attribute: `charon::something_else("_Type36")`
+  --> tests/ui/rename_attribute_failure.rs:20:1
+   |
+20 | #[charon::something_else("_Type36")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ERROR Charon failed to translate this code (6 errors)

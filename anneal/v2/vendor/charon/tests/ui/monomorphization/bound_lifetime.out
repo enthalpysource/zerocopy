@@ -1,0 +1,59 @@
+# Final LLBC before serialization:
+
+// Full name: core::option::Option::<&'_ u32>
+#[lang_item("Option")]
+pub enum Option::<&'_ u32> {
+  None,
+  Some(&'_ u32),
+}
+
+// Full name: test_crate::foo
+fn foo<'_0>(x_1: &'_0 u32) -> Option::<&'_ u32>
+{
+    let _0: Option::<&'_ u32>; // return
+    let x_1: &'1 u32; // arg #1
+    let _2: &'2 u32; // anonymous local
+
+    storage_live(_2)
+    _2 = &(*x_1)
+    _0 = Option::<&'_ u32>::Some { 0: move _2 }
+    storage_dead(_2)
+    return
+}
+
+// Full name: test_crate::main
+fn main()
+{
+    let _0: (); // return
+    let _1: Option::<&'_ u32>; // anonymous local
+    let _2: &'1 u32; // anonymous local
+    let _3: &'2 u32; // anonymous local
+    let _4: &'3 u32; // anonymous local
+    let _5: &'4 u32; // anonymous local
+    let _6: &'7 u32; // anonymous local
+    let _7: u32; // anonymous local
+
+    storage_live(_5)
+    storage_live(_6)
+    storage_live(_7)
+    _7 = const 42u32
+    _6 = &_7
+    _5 = move _6
+    storage_live(_4)
+    _0 = ()
+    storage_live(_1)
+    storage_live(_2)
+    storage_live(_3)
+    _4 = move _5
+    _3 = &(*_4)
+    _2 = &(*_3)
+    _1 = foo<'6>(move _2)
+    storage_dead(_2)
+    storage_dead(_3)
+    storage_dead(_1)
+    _0 = ()
+    return
+}
+
+
+
