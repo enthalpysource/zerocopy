@@ -39,5 +39,4 @@ url = "https://example.com/macos-aarch64.tar.zst"
 
 [dependencies]
 exocrate = { path = "./exocrate" }
-# FIXME: Update to version number "1.2.2-alpha" when it is released.
-toml_const = { git = "https://github.com/facesthe/toml_const.git", rev = "b1119325fae3b2a7ca61cd6115134c1c1f113009" }
+toml_const = "1.3.0"

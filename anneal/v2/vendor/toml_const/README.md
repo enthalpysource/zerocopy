@@ -1,7 +1,7 @@
 # toml_const
 
 <div align="center">
-
+`
 **TOML compile-time constants**
 
 <!-- ![crate license](https://img.shields.io/crates/l/toml_const) -->
@@ -156,7 +156,9 @@ The union of all formats will be used to generate the final datetime format.
 
 ## Attributes
 
-Docstrings and derive attributes are supported.
+Derive attributes are automatically forwarded to struct definitions.
+Docstrings are automatically forwarded to its instantiation.
+
 `Clone`, `Copy`, and `Debug` are automatically derived for all types.
 
 ```rust
@@ -172,6 +174,24 @@ toml_const! {
 }
 ```
 
+### Advanced attributes
+
+Not all attributes can be forwarded to the generated code, as there are 2 variants of code generated: struct definitions and the final instantiation.
+Attributes can be forwarded to struct definitions and the struct instantiation by using `#[define(ATTR)]` and `#[instance(ATTR)]` respectively.
+
+Attributes that are not `derive`, `doc`, `define` and `instance` are forwarded to both variants.
+Note that this *may* cause compile issues if the attribute is not valid for either variant.
+
+| Attribute | Forwarded as | Forwarded to |
+| --- | --- | -- |
+| `#[derive(Attribute)]` | `#[derive(Attribute)]` | struct definitions |
+| `#[define(cfg_attr(debug_assertions, Derive(Macro)))]` | `#[cfg_attr(debug_assertions, Derive(Macro))]` | struct definitions |
+| `#[doc = "Docstring"]` | `#[doc = "Docstring"]` | instantiation |
+| `#[define(doc = "Docstring")]` | `#[doc = "Docstring"]` | definition |
+| `#[define(derive(Attribute))]` | `#[derive(Attribute)]` | struct definitions |
+| `#[instance(allow(unused))]` | `#[allow(unused)]` | instantiation |
+| `#[rustfmt::skip]` | `#[rustfmt::skip]` | All definitions and instantiation |
+
 ## Limitations
 
 This library does not support the full TOML specification.
@@ -180,7 +200,7 @@ It **will fail to**:
 
 - generate arrays with distinct types (arrays containing different types, arrays of tables with conflicting key types)
 - create a struct from a table with a blank key `"" = true`
-- parse reserved keys (`__map__` is reserved cannot be used as a key)
+- parse reserved keys (`__map__` is reserved and it cannot be used as a key)
 
 It **will modify**:
 

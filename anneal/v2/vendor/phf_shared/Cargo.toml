@@ -11,9 +11,9 @@
 
 [package]
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.66"
 name = "phf_shared"
-version = "0.12.1"
+version = "0.13.1"
 authors = ["Steven Fackler <sfackler@gmail.com>"]
 build = false
 autolib = false

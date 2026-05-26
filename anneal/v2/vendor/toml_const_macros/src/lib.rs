@@ -160,14 +160,13 @@ pub fn toml_const_inner(input: pm::TokenStream) -> pm::TokenStream {
         .as_table()
         .expect("conversion back to table must not fail");
 
-    let derive_attrs = input
-        .attrs
-        .iter()
-        .filter(|attr| attr.path().is_ident("derive"))
-        .cloned()
-        .collect::<Vec<_>>();
+    let definition_attrs = match input.definition_attrs() {
+        Ok(def) => def,
+        Err(e) => return e.to_compile_error().into(),
+    };
 
-    let table_definitions = toml_val_table.definition(&input.item_ident.to_string(), &derive_attrs);
+    let table_definitions =
+        toml_val_table.definition(&input.item_ident.to_string(), &definition_attrs);
 
     let instantiation =
         toml_table.instantiate(&input.item_ident.to_string(), &toml_val_table, vec![]);
@@ -186,16 +185,18 @@ pub fn toml_const_inner(input: pm::TokenStream) -> pm::TokenStream {
     let item_ident = &input.item_ident;
     let item_ty = input.item_ident.to_string().to_type_ident();
 
-    let doc_attrs = input
-        .doc_attrs()
-        .into_iter()
-        .map(|a| a.to_token_stream())
-        .collect::<pm2::TokenStream>();
+    let instance_attrs = match input.instantiation_attrs() {
+        Ok(instance) => instance
+            .into_iter()
+            .map(|a| a.to_token_stream())
+            .collect::<pm2::TokenStream>(),
+        Err(e) => return e.to_compile_error().into(),
+    };
 
     quote! {
         #table_definitions
 
-        #doc_attrs
+        #instance_attrs
         #pub_token #static_const_token #item_ident: #item_ty = #instantiation;
     }
     .into()

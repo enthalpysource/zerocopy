@@ -6,8 +6,13 @@ use std::path::{Path, PathBuf};
 use proc_macro2 as pm2;
 use proc_macro2::{Delimiter, Group};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::Ident;
+use syn::spanned::Spanned;
 use syn::{braced, parse::Parse, punctuated::Punctuated, LitStr};
+use syn::{Ident, Token};
+
+// attributes to forward
+const INSTANTIATION_ATTR_PATH: &str = "instance";
+const DEFINITION_ATTR_PATH: &str = "define";
 
 #[derive(Clone)]
 pub struct MultipleMacroInput(pub Vec<MacroInput>);
@@ -342,14 +347,88 @@ impl MacroInput {
         Ok(merged)
     }
 
-    pub fn doc_attrs(&self) -> Vec<&syn::Attribute> {
+    /// Inner method for [MacroInput::define_attr] and [MacroInput::instance_attr]
+    fn strip_attr_path_and_transform(
+        attr: &syn::Attribute,
+        attr_path: &str,
+    ) -> Result<Option<syn::Attribute>, syn::Error> {
+        match &attr.meta {
+            syn::Meta::Path(path) => Err(syn::Error::new(
+                path.span(),
+                format!("Nothing to forward. Use #[{}(...)]", attr_path),
+            )),
+            syn::Meta::List(meta_list) => {
+                let inner_attr = syn::Attribute {
+                    pound_token: Token![#](meta_list.span()),
+                    style: syn::AttrStyle::Outer,
+                    bracket_token: attr.bracket_token,
+                    meta: {
+                        let m: syn::Meta = syn::parse2(meta_list.tokens.clone())?;
+                        //
+                        m
+                    },
+                };
+
+                Ok(Some(inner_attr))
+            }
+            syn::Meta::NameValue(meta_name_value) => Err(syn::Error::new(
+                meta_name_value.span(),
+                format!("Incorrect syntax, use #[{}(...)] instead", attr_path),
+            )),
+        }
+    }
+
+    fn define_attr(attr: &syn::Attribute) -> Result<Option<syn::Attribute>, syn::Error> {
+        if attr.path().is_ident("derive") {
+            Ok(Some(attr.clone()))
+        } else if attr.path().is_ident(DEFINITION_ATTR_PATH) {
+            Self::strip_attr_path_and_transform(attr, DEFINITION_ATTR_PATH)
+        } else if !(attr.path().is_ident("doc") || attr.path().is_ident(INSTANTIATION_ATTR_PATH)) {
+            Ok(Some(attr.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Returns Some if the attribute should be forwarded to the instantiation.
+    ///
+    /// Transforms the contents of the attribute, if applicable.
+    fn instance_attr(attr: &syn::Attribute) -> Result<Option<syn::Attribute>, syn::Error> {
+        if attr.path().is_ident("doc") {
+            Ok(Some(attr.clone()))
+        } else if attr.path().is_ident(INSTANTIATION_ATTR_PATH) {
+            Self::strip_attr_path_and_transform(attr, INSTANTIATION_ATTR_PATH)
+        } else if !(attr.path().is_ident("derive") || attr.path().is_ident(DEFINITION_ATTR_PATH)) {
+            Ok(Some(attr.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Returns all attributes that should be forwarded to struct definitions.
+    ///
+    /// Transforms the contents of the attribute, if applicable.
+    pub fn definition_attrs(&self) -> Result<Vec<syn::Attribute>, syn::Error> {
         self.attrs
             .iter()
-            .filter(|a| match a.meta.require_name_value() {
-                Ok(nv) => nv.path.is_ident("doc"),
-                Err(_) => false,
+            .filter_map(|a| match Self::define_attr(a) {
+                Ok(Some(attr)) => Some(Ok(attr)),
+                Ok(None) => None,
+                Err(e) => Some(Err(e)),
             })
-            .collect()
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    /// Returns all attributes that should be forwarded to instantiation
+    pub fn instantiation_attrs(&self) -> Result<Vec<syn::Attribute>, syn::Error> {
+        self.attrs
+            .iter()
+            .filter_map(|a| match Self::instance_attr(a) {
+                Ok(Some(attr)) => Some(Ok(attr)),
+                Ok(None) => None,
+                Err(e) => Some(Err(e)),
+            })
+            .collect::<Result<Vec<_>, _>>()
     }
 }
 
@@ -520,4 +599,120 @@ mod tests {
     test_parse!(UsePath: test_parse_use_path_unused {
         "some_file_path.toml"
     });
+
+    /// Outer attributes only
+    ///
+    /// Used for macro doctest below
+    struct Attr(syn::Attribute);
+
+    impl Parse for Attr {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            syn::Attribute::parse_outer(input).map(|res| Attr(res.into_iter().next().unwrap()))
+        }
+    }
+
+    /// Test attribute forwarding and transformation
+    #[test]
+    fn test_forward_attributes() {
+        macro_rules! test_forward {
+            ($($fn_path:ident)::+ (#[$attr: meta]) = $result: pat, $err: literal) => {
+                test_forward! {
+                    $($fn_path)::+ (#[$attr] => #[$attr]) = $result, $err
+                }
+            };
+
+            ($($fn_path:ident)::+ (#[$attr: meta] => #[$out_attr: meta]) = $result: pat, $err: literal) => {
+                let tokenstream = quote! {#[$attr]};
+                let attr: Result<Attr, _> = syn::parse2(tokenstream);
+
+                let res = attr.map(|a| {
+                    $($fn_path)::+(&a.0).expect("processing should not fail")
+                });
+
+                assert!(matches!(res, $result), $err);
+
+                if let Ok(Some(inner_attr)) = res {
+                    let expected_out_attr: Attr = syn::parse2(quote! {#[ $out_attr ]}).expect("failed to parse out attribute");
+                    assert_eq!(
+                        inner_attr.to_token_stream().to_string(),
+                        expected_out_attr.0.to_token_stream().to_string()
+                    );
+                }
+
+            };
+        }
+
+        // defines
+        test_forward! {MacroInput::define_attr(#[derive(Clone, Debug)]) = Ok(Some(_)), "derives are forwarded"}
+        test_forward! {MacroInput::define_attr(#[doc = "Docstring"]) = Ok(None), "doc attrs not forwarded"}
+        test_forward! {
+            MacroInput::define_attr(
+                #[define(some_definition_attr)] => #[some_definition_attr]
+            ) = Ok(Some(_)), "defines are forwarded"
+        }
+        test_forward! {
+            MacroInput::define_attr(
+                #[define(allow(unused))] => #[allow(unused)]
+            ) = Ok(Some(_)), "defines are forwarded"
+        }
+        test_forward! {MacroInput::define_attr(#[instance(some_instance_attr)]) = Ok(None), "instance not forwarded"}
+        test_forward! {MacroInput::define_attr(#[rustfmt::skip]) = Ok(Some(_)), "non matching attr paths are all forwarded"};
+
+        // instances
+        test_forward! {MacroInput::instance_attr(#[derive(Clone, Debug)]) = Ok(None), "derives are not forwarded"}
+        test_forward! {MacroInput::instance_attr(#[doc = "Docstring"]) = Ok(Some(_)), "doc attrs are forwarded"}
+        test_forward! {
+            MacroInput::instance_attr(
+                #[instance(some_instance_attr)] => #[some_instance_attr]
+            ) = Ok(Some(_)), "instances are forwarded"
+        }
+        test_forward! {
+            MacroInput::instance_attr(
+                #[instance(allow(unused))] => #[allow(unused)]
+            ) = Ok(Some(_)), "instances are forwarded"
+        }
+        test_forward! {MacroInput::instance_attr(#[define(some_define_attr)]) = Ok(None), "defines are not forwarded"};
+        test_forward! {MacroInput::instance_attr(#[rustfmt::skip]) = Ok(Some(_)), "non matching attr paths are all forwarded"};
+    }
+
+    /// Test attribute detection and forwarding
+    #[test]
+    fn test_forward_attributes_debug() {
+        // let attr1 = quote! {#[derive(Clone, Debug)]};
+        // let attr2 = quote! {#[doc = "Docstring"]};
+        // let attr3 = quote! {#[define(some_definition_attr)]};
+        let attr4 = quote! {#[define(allow(unused))]};
+        // let attr5 = quote! {#[instance(some_instance_attr)]};
+        // let attr6 = quote! {#[rustfmt::skip]};
+
+        // let attr1: Attr = syn::parse2(attr1).expect("failed to parse attr1");
+        // let attr2: Attr = syn::parse2(attr2).expect("failed to parse attr2");
+        // let attr3: Attr = syn::parse2(attr3).expect("failed to parse attr3");
+        let attr4: Attr = syn::parse2(attr4).expect("failed to parse attr4");
+        // let attr5: Attr = syn::parse2(attr5).expect("failed to parse attr5");
+        // let attr6: Attr = syn::parse2(attr6).expect("failed to parse attr6");
+
+        // println!("attr1: {:#?}", attr1.0.to_token_stream().to_string());
+        // println!("attr2: {:#?}", attr2.0.to_token_stream().to_string());
+        // println!("attr3: {:#?}", attr3.0.to_token_stream().to_string());
+        // println!("attr4: {:#?}", attr4.0.to_token_stream().to_string());
+        // println!("attr5: {:#?}", attr5.0.to_token_stream().to_string());
+        // println!("attr6: {:#?}", attr6.0.to_token_stream().to_string());
+
+        fn show_input_output(attr: syn::Attribute) {
+            println!("{}", attr.to_token_stream());
+            let res = MacroInput::define_attr(&attr);
+            if let Ok(Some(inner)) = res {
+                println!("{}", inner.to_token_stream());
+            }
+        }
+
+        show_input_output(attr4.0);
+    }
+
+    #[test]
+    fn test_forward_testing() {
+
+        // MacroInput::define_attr;
+    }
 }

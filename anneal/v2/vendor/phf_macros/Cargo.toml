@@ -11,9 +11,9 @@
 
 [package]
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.66"
 name = "phf_macros"
-version = "0.12.1"
+version = "0.13.1"
 authors = ["Steven Fackler <sfackler@gmail.com>"]
 build = false
 autolib = false
@@ -44,14 +44,14 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies.phf_generator]
-version = "0.12"
+version = "0.13.1"
 
 [dependencies.phf_shared]
-version = "^0.12"
+version = "^0.13.1"
 default-features = false
 
 [dependencies.proc-macro2]
-version = "1"
+version = "1.0.95"
 
 [dependencies.quote]
 version = "1"
