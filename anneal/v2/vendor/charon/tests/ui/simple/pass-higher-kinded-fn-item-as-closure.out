@@ -1,0 +1,127 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = drop_in_place<Self>
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct::drop_in_place
+unsafe fn drop_in_place<Self>(_1: *mut Self)
+= <opaque>
+
+// Full name: core::marker::Tuple
+#[lang_item("tuple_trait")]
+pub trait Tuple<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: core::ops::function::FnOnce
+#[lang_item("fn_once")]
+pub trait FnOnce<Self, Args, Self_Output>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Args: Sized)
+    proof ImpliedClause2: (Args: Tuple)
+    proof ImpliedClause3: (Self_Output: Sized)
+    fn call_once = call_once<Self, Args, Self_Output>[Self]
+    vtable: core::ops::function::FnOnce::{vtable}<Args, Self_Output>
+}
+
+// Full name: core::ops::function::FnMut
+#[lang_item("fn_mut")]
+pub trait FnMut<Self, Args, Self_Clause1_Output>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: FnOnce<Args, Self_Clause1_Output>)
+    proof ImpliedClause2: (Args: Sized)
+    proof ImpliedClause3: (Args: Tuple)
+    fn call_mut<'_0_1> = call_mut<'_0_1, Self, Args, Self_Clause1_Output>[Self]
+    vtable: core::ops::function::FnMut::{vtable}<Args, Self_Clause1_Output>
+}
+
+// Full name: core::ops::function::Fn
+#[lang_item("fn")]
+pub trait Fn<Self, Args, Self_Clause1_Clause1_Output>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: FnMut<Args, Self_Clause1_Clause1_Output>)
+    proof ImpliedClause2: (Args: Sized)
+    proof ImpliedClause3: (Args: Tuple)
+    fn call<'_0_1> = core::ops::function::Fn::call<'_0_1, Self, Args, Self_Clause1_Clause1_Output>[Self]
+    vtable: core::ops::function::Fn::{vtable}<Args, Self_Clause1_Clause1_Output>
+}
+
+pub extern "rust-call" fn core::ops::function::Fn::call<'_0, Self, Args, Clause0_Clause1_Clause1_Output>(_1: &'_0 Self, _2: Args) -> Clause0_Clause1_Clause1_Output
+where
+    TraitClause0: (Self: Fn<Args, Clause0_Clause1_Clause1_Output>),
+= <opaque>
+
+// Full name: core::ops::function::FnMut::call_mut
+pub extern "rust-call" fn call_mut<'_0, Self, Args, Clause0_Clause1_Output>(_1: &'_0 mut Self, _2: Args) -> Clause0_Clause1_Output
+where
+    TraitClause0: (Self: FnMut<Args, Clause0_Clause1_Output>),
+= <opaque>
+
+// Full name: core::ops::function::FnOnce::call_once
+pub extern "rust-call" fn call_once<Self, Args, Clause0_Output>(_1: Self, _2: Args) -> Clause0_Output
+where
+    TraitClause0: (Self: FnOnce<Args, Clause0_Output>),
+= <opaque>
+
+// Full name: test_crate::flabada
+pub fn flabada<'a>(x_1: &'a ()) -> &'a ()
+{
+    let _0: &'1 (); // return
+    let x_1: &'2 (); // arg #1
+
+    _0 = copy x_1
+    return
+}
+
+pub fn test_crate::call<'b, F>(_1: F)
+where
+    TraitClause0: (F: Sized),
+    TraitClause1: (F: Fn<(&'b (),), &'b ()>),
+{
+    let _0: (); // return
+    let _1: F; // arg #1
+
+    _0 = ()
+    _0 = ()
+    conditional_drop[{built_in impl Destruct for F}::drop_in_place] _1
+    return
+}
+
+// Full name: test_crate::flibidi
+pub fn flibidi()
+{
+    let _0: (); // return
+    let _1: (); // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    _1 = test_crate::call<'0, for<'a> flabada<'a>>[{built_in impl Sized for for<'a> flabada<'a>}, {built_in impl Fn<(&'0 (),), &'32 ()> for for<'a> flabada<'a>}](const flabada<'63>)
+    storage_dead(_1)
+    _0 = ()
+    return
+}
+
+
+

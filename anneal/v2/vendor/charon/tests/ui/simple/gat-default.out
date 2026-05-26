@@ -1,0 +1,58 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: alloc::alloc::Global
+#[lang_item("global_alloc_ty")]
+pub struct Global {}
+
+// Full name: alloc::vec::Vec
+#[lang_item("Vec")]
+pub opaque type Vec<T>
+where
+    TraitClause0: (T: Sized),
+    TraitClause1: (type_error("removed allocator parameter"): Sized),
+
+// Full name: test_crate::Collection
+trait Collection<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    type Sibling<U> = Vec<U>[TraitClause0_1, {built_in impl Sized for Global}]
+    where
+        TraitClause0_1: (U: Sized),
+        proof ImpliedClause0: (Self::Sibling<U>[TraitClause0_1]: Sized);
+    non-dyn-compatible
+}
+
+// Full name: test_crate::{impl Collection for ()}
+impl "impl_Collection_for_unit" Collection for () {
+    proof ImpliedClause0: ((): MetaSized) = {built_in impl MetaSized for ()}
+    type Sibling<U> = Vec<U>[TraitClause0_1, {built_in impl Sized for Global}]
+    where
+        TraitClause0_1: (U: Sized),
+        proof ImpliedClause0: (impl_Collection_for_unit::Sibling<U>[TraitClause0_1]: Sized) = impl_Collection_for_unit::Sibling::ImpliedClause0;
+    non-dyn-compatible
+}
+
+// Full name: test_crate::main
+fn main()
+{
+    let _0: (); // return
+
+    _0 = ()
+    _0 = ()
+    return
+}
+
+
+

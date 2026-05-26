@@ -1,0 +1,21 @@
+# Final LLBC before serialization:
+
+// Full name: test_crate::FromResidual
+pub trait FromResidual<Self, R>
+
+// Full name: test_crate::Try
+pub trait Try<Self, Self_Output, Self_Residual>
+{
+    proof ImpliedClause0: (Self: FromResidual<Self_Residual>)
+    non-dyn-compatible
+}
+
+// Full name: test_crate::Residual
+pub trait Residual<Self, O, Self_TryType>
+{
+    proof ImpliedClause0: (Self_TryType: Try<O, Self>)
+    vtable: test_crate::Residual::{vtable}<O, Self_TryType>
+}
+
+
+

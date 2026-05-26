@@ -1,0 +1,50 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: test_crate::HasAssoc
+trait HasAssoc<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self::Assoc: Sized)
+    type Assoc
+    vtable: test_crate::HasAssoc::{vtable}<Self::Assoc>
+}
+
+// Full name: test_crate::HasGAT
+trait HasGAT<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self::Friend: Sized)
+    proof ImpliedClause2: (Self::Friend: HasAssoc)
+    type GAT<T>
+    where
+        TraitClause0_1: (T: Sized),
+        proof ImpliedClause0: (Self::GAT<T>[TraitClause0_1]: Sized);
+    type Friend
+    non-dyn-compatible
+}
+
+// Full name: test_crate::floatify
+fn floatify<C>() -> TraitClause1::ImpliedClause2::Assoc
+where
+    TraitClause0: (C: Sized),
+    TraitClause1: (C: HasGAT),
+{
+    let _0: TraitClause1::ImpliedClause2::Assoc; // return
+
+    panic(core::panicking::panic)
+}
+
+
+

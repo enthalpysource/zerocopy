@@ -1,0 +1,103 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
+    non-dyn-compatible
+}
+
+unsafe fn core::marker::Destruct::drop_in_place<Self>(_1: *mut Self)
+= <opaque>
+
+// Full name: alloc::alloc::Global
+#[lang_item("global_alloc_ty")]
+pub struct Global {}
+
+// Full name: alloc::alloc::Global::{impl Destruct for Global}::drop_in_place
+unsafe fn impl_Destruct_for_Global::drop_in_place(_1: *mut Global)
+= <opaque>
+
+// Full name: alloc::alloc::Global::{impl Destruct for Global}
+impl "impl_Destruct_for_Global" Destruct for Global {
+    fn drop_in_place = impl_Destruct_for_Global::drop_in_place
+    non-dyn-compatible
+}
+
+// Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3]}::drop_in_place
+unsafe fn impl_Destruct_for_Box::drop_in_place<T, A>(_1: *mut alloc::boxed::Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3])
+where
+    TraitClause0: (T: MetaSized),
+    TraitClause1: (A: Sized),
+    TraitClause2: (T: Destruct),
+    TraitClause3: (A: Destruct),
+= <opaque>
+
+// Full name: test_crate::use_box
+fn use_box(_1: alloc::boxed::Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global])
+{
+    let _0: (); // return
+    let _1: alloc::boxed::Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global]; // arg #1
+
+    _0 = ()
+    _0 = ()
+    drop[impl_Destruct_for_Box::drop_in_place<u32, Global>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global]] _1
+    return
+}
+
+// Full name: test_crate::main
+fn main()
+{
+    let _0: (); // return
+    let b_1: alloc::boxed::Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global]; // local
+    let _2: bool; // anonymous local
+    let _3: (); // anonymous local
+    let _4: alloc::boxed::Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global]; // anonymous local
+    let _5: bool; // anonymous local
+
+    storage_live(_5)
+    _0 = ()
+    _5 = const false
+    storage_live(b_1)
+    _5 = const true
+    b_1 = @BoxNew<u32>[{built_in impl Sized for u32}, {built_in impl Destruct for u32}](const 1u32)
+    storage_live(_2)
+    _2 = const false
+    if move _2 {
+        storage_live(_3)
+        storage_live(_4)
+        _5 = const false
+        _4 = move b_1
+        _3 = use_box(move _4)
+        storage_dead(_4)
+        storage_dead(_3)
+        _0 = ()
+    } else {
+        _0 = ()
+    }
+    storage_dead(_2)
+    // `b` is dropped implicitly here
+    if copy _5 {
+        drop[impl_Destruct_for_Box::drop_in_place<u32, Global>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global]] b_1
+    } else {
+    }
+    _5 = const false
+    storage_dead(b_1)
+    return
+}
+
+
+
