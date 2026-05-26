@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779812464803,
+  "lastUpdate": 1779813242988,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -15754,6 +15754,43 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 710,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "0321b8e7055ae7159280930753924207775dc35a",
+          "message": "[anneal][exocrate] Upgrade to toml_const 1.3.0 (#3415)\n\ngherrit-pr-id: Gz2xxcekiwax6yzlsfzuwlzh4mcfd5nms",
+          "timestamp": "2026-05-26T16:20:03Z",
+          "url": "https://github.com/google/zerocopy/commit/0321b8e7055ae7159280930753924207775dc35a"
+        },
+        "date": 1779813239729,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 89,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 577,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 751,
             "unit": "seconds"
           }
         ]
