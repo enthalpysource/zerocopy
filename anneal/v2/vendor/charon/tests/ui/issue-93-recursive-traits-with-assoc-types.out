@@ -1,0 +1,36 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: test_crate::Trait1
+pub trait Trait1<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self::T: Sized)
+    proof ImpliedClause2: (Self::T: Trait2)
+    type T
+    vtable: test_crate::Trait1::{vtable}<Self::T>
+}
+
+// Full name: test_crate::Trait2
+pub trait Trait2<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: Trait1)
+    proof ImpliedClause2: (Self::U: Sized)
+    type U
+    vtable: test_crate::Trait2::{vtable}<Self::U, Self::ImpliedClause1::T>
+}
+
+
+

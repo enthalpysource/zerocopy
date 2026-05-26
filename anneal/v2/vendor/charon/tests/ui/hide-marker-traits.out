@@ -1,0 +1,47 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = drop_in_place<Self>
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct::drop_in_place
+unsafe fn drop_in_place<Self>(_1: *mut Self)
+= <opaque>
+
+// Full name: test_crate::Idx
+trait Idx<Self>
+
+// Full name: test_crate::IndexVec
+pub struct IndexVec<I>
+where
+    TraitClause0: (I: Idx),
+{
+  i: I,
+}
+
+// Full name: test_crate::Vector
+pub struct Vector<I>
+where
+    TraitClause0: (I: Idx),
+{
+  vector: IndexVec<I>[TraitClause0],
+}
+
+// Full name: test_crate::foo
+fn foo<T>(_x_1: T)
+{
+    let _0: (); // return
+    let _x_1: T; // arg #1
+
+    _0 = ()
+    _0 = ()
+    conditional_drop[{built_in impl Destruct for T}::drop_in_place] _x_1
+    return
+}
+
+
+
