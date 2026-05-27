@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779905778696,
+  "lastUpdate": 1779905819636,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -8406,6 +8406,31 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/pull/3405/commits/d3b95475a24f7b287ee37ecaff4ea6271c369881"
         },
         "date": 1779905775572,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 8,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "98f4d2f73fb213c8700d3688adb27104c1a01018",
+          "message": "[anneal][v2] Vendor charon_lib",
+          "timestamp": "2026-05-27T17:46:42Z",
+          "url": "https://github.com/google/zerocopy/pull/3418/commits/98f4d2f73fb213c8700d3688adb27104c1a01018"
+        },
+        "date": 1779905816887,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
