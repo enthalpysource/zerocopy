@@ -96,6 +96,11 @@ impl Ctx {
         }
     }
 
+    pub(crate) fn skip_on_error(mut self) -> Self {
+        self.skip_on_error = true;
+        self
+    }
+
     pub(crate) fn core_path(&self) -> TokenStream {
         let zerocopy_crate = &self.zerocopy_crate;
         quote!(#zerocopy_crate::util::macro_util::core_reexport)
