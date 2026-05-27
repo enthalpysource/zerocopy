@@ -13,8 +13,8 @@ use crate::{
     util::{Ctx, DataExt, FieldBounds, ImplBlockBuilder, Trait},
 };
 
-pub(crate) fn derive_immutable(ctx: &Ctx, _top_level: Trait) -> TokenStream {
-    match &ctx.ast.data {
+pub(crate) fn derive_immutable(ctx: &Ctx, _top_level: Trait) -> Result<TokenStream, Error> {
+    Ok(match &ctx.ast.data {
         Data::Struct(strct) => {
             ImplBlockBuilder::new(ctx, strct, Trait::Immutable, FieldBounds::ALL_SELF).build()
         }
@@ -24,7 +24,7 @@ pub(crate) fn derive_immutable(ctx: &Ctx, _top_level: Trait) -> TokenStream {
         Data::Union(unn) => {
             ImplBlockBuilder::new(ctx, unn, Trait::Immutable, FieldBounds::ALL_SELF).build()
         }
-    }
+    })
 }
 
 pub(crate) fn derive_hash(ctx: &Ctx, _top_level: Trait) -> Result<TokenStream, Error> {
