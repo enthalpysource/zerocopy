@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779880468113,
+  "lastUpdate": 1779881247474,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -15973,6 +15973,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 701,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "9a0d277803d54383a7ae40348856e390c322ae25",
+          "message": "[wip] Introduce unstable `derive(most_traits)`",
+          "timestamp": "2026-05-26T16:51:55Z",
+          "url": "https://github.com/google/zerocopy/pull/3416/commits/9a0d277803d54383a7ae40348856e390c322ae25"
+        },
+        "date": 1779881243216,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 122,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 548,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 753,
             "unit": "seconds"
           }
         ]
