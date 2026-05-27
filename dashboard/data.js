@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779897368433,
+  "lastUpdate": 1779897495336,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -951,6 +951,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/commit/0321b8e7055ae7159280930753924207775dc35a"
         },
         "date": 1779814509629,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Image Size",
+            "value": 11596,
+            "unit": "Megabytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "145818923+google-pr-creation-bot@users.noreply.github.com",
+            "name": "Google PR Creation Bot",
+            "username": "google-pr-creation-bot"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5fc5d5bef889bbf81ab5bae500758979d5978a08",
+          "message": "Release 0.8.49 (#3417)",
+          "timestamp": "2026-05-27T11:55:29-04:00",
+          "tree_id": "4b298b6678caa62663f284dce3339ee15b73f7cd",
+          "url": "https://github.com/google/zerocopy/commit/5fc5d5bef889bbf81ab5bae500758979d5978a08"
+        },
+        "date": 1779897492200,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
