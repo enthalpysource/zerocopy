@@ -144,26 +144,21 @@ union BadIntoBytesUnionGeneric<T: imp::Copy> {
 
 util_assert_not_impl_any!(BadIntoBytesUnionGeneric<u8>: imp::IntoBytes);
 
-#[cfg(__ZEROCOPY_INTERNAL_USE_ONLY_NIGHTLY_FEATURES_IN_TESTS)]
-mod trivial_bounds {
-    use super::*;
+#[derive(imp::FromBytes)]
+#[zerocopy(on_error = "skip")]
+#[zerocopy(crate = "zerocopy_renamed")]
+#[repr(transparent)]
+struct TrivialBounds(bool);
 
-    #[derive(imp::FromBytes)]
-    #[zerocopy(on_error = "skip")]
-    #[zerocopy(crate = "zerocopy_renamed")]
-    #[repr(transparent)]
-    struct TrivialBounds(bool);
+util_assert_not_impl_any!(TrivialBounds: imp::FromBytes);
 
-    util_assert_not_impl_any!(TrivialBounds: imp::FromBytes);
-
-    #[derive(imp::IntoBytes)]
-    #[zerocopy(on_error = "skip")]
-    #[zerocopy(crate = "zerocopy_renamed")]
-    #[repr(C)]
-    struct BadIntoBytesStructPadding {
-        a: u8,
-        b: u16,
-    }
-
-    util_assert_not_impl_any!(BadIntoBytesStructPadding: imp::IntoBytes);
+#[derive(imp::IntoBytes)]
+#[zerocopy(on_error = "skip")]
+#[zerocopy(crate = "zerocopy_renamed")]
+#[repr(C)]
+struct BadIntoBytesStructPadding {
+    a: u8,
+    b: u16,
 }
+
+util_assert_not_impl_any!(BadIntoBytesStructPadding: imp::IntoBytes);

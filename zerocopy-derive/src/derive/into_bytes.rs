@@ -48,6 +48,9 @@ fn derive_into_bytes_struct(ctx: &Ctx, strct: &DataStruct) -> Result<TokenStream
         // check for in this branch's condition.
         (None, false)
     } else if ctx.ast.generics.params.is_empty() {
+        // Only emit padding check if `!ctx.skip_on_error`, since padding checks
+        // are evaluated eagerly and cannot be silently skipped.
+
         // Is the last field a syntactic slice, i.e., `[SomeType]`.
         let is_syntactic_dst =
             strct.fields().last().map(|(_, _, ty)| matches!(ty, Type::Slice(_))).unwrap_or(false);
