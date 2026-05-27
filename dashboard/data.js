@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779815155455,
+  "lastUpdate": 1779878622874,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -8278,6 +8278,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "9e20917878209f411fe3f16323c70e2eccea2d56",
+          "message": "[wip] Introduce unstable `derive(most_traits)`",
+          "timestamp": "2026-05-26T16:51:55Z",
+          "url": "https://github.com/google/zerocopy/pull/3416/commits/9e20917878209f411fe3f16323c70e2eccea2d56"
+        },
+        "date": 1779878620154,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 8,
             "unit": "seconds"
           }
         ]
