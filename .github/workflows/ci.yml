@@ -640,6 +640,10 @@ jobs:
     # SIMD type impls), and so we need to run on each target.
     - name: Check semver compatibility
       uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
+      env:
+        # `zerocopy_unstable_ptr` exposes unstable API, so it should not be
+        # included in semver checks.
+        RUSTDOCFLAGS: -Dwarnings
       with:
         # Don't semver check zerocopy-derive; as a proc macro, it doesn't have
         # an API that cargo-semver-checks can understand.
