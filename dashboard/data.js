@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779997994449,
+  "lastUpdate": 1780074136399,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -8711,6 +8711,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "f70e4224996ed73b2cd927719246361d977a629e",
+          "message": "[pointer] `Ptr::iter` takes `self` by value (#3421)\n\nThis fixes a prior soundness hole - `Ptr::iter` took `&self`, permitting\nmultiple overlapping `Exclusive` `Ptr`s to be created at the same time.\n\nIn CI, when running `cargo-semver-checks`, don't pass `--cfg\nzerocopy_unstable_ptr`, as we don't want to semver-check unstable APIs.\n\nRelease 0.8.50.\n\nFixes #3419\n\ngherrit-pr-id: Ibb7d512d9e12ecfd118bb018bcae10d17279c2ed",
+          "timestamp": "2026-05-29T17:01:13Z",
+          "url": "https://github.com/google/zerocopy/commit/f70e4224996ed73b2cd927719246361d977a629e"
+        },
+        "date": 1780074132704,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 11,
             "unit": "seconds"
           }
         ]
