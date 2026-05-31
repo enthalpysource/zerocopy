@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780249254036,
+  "lastUpdate": 1780250041751,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -17061,6 +17061,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 623,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "76e1c7ebf4c09a90b7f3efbd3bc8393825cf3cd8",
+          "message": "Make GHCR cache exports and consumer pushes conditional for external PRs",
+          "timestamp": "2026-05-31T08:45:06Z",
+          "url": "https://github.com/google/zerocopy/pull/3423/commits/76e1c7ebf4c09a90b7f3efbd3bc8393825cf3cd8"
+        },
+        "date": 1780250038764,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 127,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 552,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 759,
             "unit": "seconds"
           }
         ]
