@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780256230436,
+  "lastUpdate": 1780256943518,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -17123,6 +17123,43 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 759,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "cf7cf6154867078e8b994ae981959edffaf724a9",
+          "message": "Handle fork PR Docker cache permissions (#3423)\n\n### Motivation\n- External fork PRs were failing CI at Docker build/cache steps because the runner `GITHUB_TOKEN` for forks does not have permission to write GHCR packages or cache entries.\n\n### Description\n- In `.github/workflows/ci.yml` conditionally disable `cache-to` exports to GHCR for external pull requests while preserving cache exports for same-repo runs, pushes, merge groups, and workflow dispatches.\n- In `.github/workflows/anneal.yml` conditionally disable `cache-to` and guard the `Build and push Docker image` step so image push/cache writes are only attempted when the run is allowed to write to GHCR.\n- In `.github/workflows/anneal.yml` add `if:` guards on Anneal consumer jobs (`anneal_tests` and `verify_examples`) so those consumer jobs are skipped for external fork PRs that cannot publish the GHCR image they would consume.\n\n### Testing\n- Ran `./ci/check_actions.sh` and it completed successfully.\n- Ran `git diff --check` and it produced no issues.\n- Ran `CARGO_ZEROCOPY_AUTO_INSTALL_TOOLCHAIN=1 ./githooks/pre-push` to exercise the repo hooks in a non-interactive way and it completed successfully (the initial pre-push without auto-install hit local tooling prompts).",
+          "timestamp": "2026-05-31T19:36:24Z",
+          "url": "https://github.com/google/zerocopy/commit/cf7cf6154867078e8b994ae981959edffaf724a9"
+        },
+        "date": 1780256940478,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 88,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 525,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 693,
             "unit": "seconds"
           }
         ]
