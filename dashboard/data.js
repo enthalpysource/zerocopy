@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780521896013,
+  "lastUpdate": 1780522017657,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -9114,6 +9114,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1200,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Sock",
+            "username": "platonicsock",
+            "email": "87631534+platonicsock@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "eb1191c8eac66a19a3e6e0ec3cd88fa457553a64",
+          "message": "Fixed section reference (#3424)\n\nSyntax description is in Section 6, not Section 5",
+          "timestamp": "2026-06-03T21:26:04Z",
+          "url": "https://github.com/google/zerocopy/commit/eb1191c8eac66a19a3e6e0ec3cd88fa457553a64"
+        },
+        "date": 1780522015268,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 6,
             "unit": "seconds"
           }
         ]
