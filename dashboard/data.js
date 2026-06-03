@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780521529528,
+  "lastUpdate": 1780521896013,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -17580,6 +17580,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 725,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cacc81c2bdb1efa169bed1dda231d89590539f7b",
+          "message": "[ci][anneal] Don't publish fork PR benchmarks (#3430)",
+          "timestamp": "2026-06-03T13:54:01-07:00",
+          "tree_id": "489e52a87f260a77311791b511785c53a13c281d",
+          "url": "https://github.com/google/zerocopy/commit/cacc81c2bdb1efa169bed1dda231d89590539f7b"
+        },
+        "date": 1780521892694,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 82,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 438,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 599,
             "unit": "seconds"
           }
         ]
