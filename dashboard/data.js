@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780522681566,
+  "lastUpdate": 1780523259840,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -17739,6 +17739,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 619,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "87631534+platonicsock@users.noreply.github.com",
+            "name": "Sock",
+            "username": "platonicsock"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd37d45186e8f846df74da6f2d17ded4e19b4bd4",
+          "message": "Typo fixes (#3425)\n\nTwo instances of changing \"Anneal'\" to \"Anneal's\"",
+          "timestamp": "2026-06-03T14:30:13-07:00",
+          "tree_id": "735cf8abf0171da25ea8da7e0e8363d301df4f0a",
+          "url": "https://github.com/google/zerocopy/commit/bd37d45186e8f846df74da6f2d17ded4e19b4bd4"
+        },
+        "date": 1780523255510,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 98,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 544,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 728,
             "unit": "seconds"
           }
         ]
