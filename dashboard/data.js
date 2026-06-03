@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780522460929,
+  "lastUpdate": 1780522681566,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -1067,6 +1067,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/commit/cacc81c2bdb1efa169bed1dda231d89590539f7b"
         },
         "date": 1780521405771,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Image Size",
+            "value": 11674,
+            "unit": "Megabytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "87631534+platonicsock@users.noreply.github.com",
+            "name": "Sock",
+            "username": "platonicsock"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd37d45186e8f846df74da6f2d17ded4e19b4bd4",
+          "message": "Typo fixes (#3425)\n\nTwo instances of changing \"Anneal'\" to \"Anneal's\"",
+          "timestamp": "2026-06-03T14:30:13-07:00",
+          "tree_id": "735cf8abf0171da25ea8da7e0e8363d301df4f0a",
+          "url": "https://github.com/google/zerocopy/commit/bd37d45186e8f846df74da6f2d17ded4e19b4bd4"
+        },
+        "date": 1780522677771,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
