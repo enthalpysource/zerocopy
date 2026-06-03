@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780493509105,
+  "lastUpdate": 1780518293188,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -9006,6 +9006,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1113,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "5ad38a52b02aea911c3192fe890071517e51bb54",
+          "message": "Prevent external PRs from pushing benchmark data in anneal CI workflow",
+          "timestamp": "2026-06-03T00:39:32Z",
+          "url": "https://github.com/google/zerocopy/pull/3430/commits/5ad38a52b02aea911c3192fe890071517e51bb54"
+        },
+        "date": 1780518289873,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1170,
             "unit": "seconds"
           }
         ]
