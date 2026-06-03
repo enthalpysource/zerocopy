@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780519059870,
+  "lastUpdate": 1780521207939,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -9031,6 +9031,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 1170,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cacc81c2bdb1efa169bed1dda231d89590539f7b",
+          "message": "[ci][anneal] Don't publish fork PR benchmarks (#3430)",
+          "timestamp": "2026-06-03T13:54:01-07:00",
+          "tree_id": "489e52a87f260a77311791b511785c53a13c281d",
+          "url": "https://github.com/google/zerocopy/commit/cacc81c2bdb1efa169bed1dda231d89590539f7b"
+        },
+        "date": 1780521205563,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 1132,
             "unit": "seconds"
           }
         ]
