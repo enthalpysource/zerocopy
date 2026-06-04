@@ -37,42 +37,24 @@
 //!
 //! The simplest way to auto-version your installations is using macros that tie your installation
 //! platform (i.e., `std::env::consts::OS` and `std::env::consts::ARCH` values) and versioning
-//! files that will change anytime your external dependencies might. Here is an example of
-//! realizing this versioning strategy using the macros exported by `exocrate`:
+//! files that will change anytime your external dependencies might. A tool can construct these
+//! values directly, or derive them from the macros exported by `exocrate`:
 //!
-//! ```rust
-//! exocrate::config! {
-//!     const CONFIG: Config = Config {
-//!         // Path components that are joined to establish the base directory for all exocrate
-//!         // installations.
-//!         //
-//!         // For `my-tool` developers: `<my-tool-root>/target/.my-tool/exocrate/<version>`
-//!         // For `my-tool` users: `~/.my-tool/exocrate/<version>`
-//!         rel_dir_path: [".my-tool", "exocrate"],
-//!         // Since the definition of platform-specific exocrate releases for `my-tool` will be
-//!         // specified in its `Cargo.toml` file (see below), we use `Cargo.toml` and `Cargo.lock`
-//!         //  as a "change detector" to change the version.
-//!         //
-//!         // This is an over-approximation: unrelated changes to `Cargo.toml` or `Cargo.lock`
-//!         // (e.g., patch-level version bumps of cargo-managed dependencies, changes in listed
-//!         // crate dependencies, shipping an exocrate release for some other platform, etc.) will
-//!         // also change the exocrate version. This is generally not a problem because only
-//!         // developers of `my-tool` itself need to deal with noisy exocrate version changes;
-//!         // users will only install versions associated with less frequent releases of
-//!         // `my-tool`, e.g., installed via `cargo install my-tool`.
-//!         versioned_files: &["../Cargo.toml", "../Cargo.lock"],
-//!     };
-//! }
+//! ```rust,no_run
+//! const CONFIG: exocrate::Config = exocrate::Config {
+//!     // Path components that are joined to establish the base directory for all exocrate
+//!     // installations.
+//!     //
+//!     // For `my-tool` developers: `<my-tool-root>/target/.my-tool/exocrate/<version>`
+//!     // For `my-tool` users: `~/.my-tool/exocrate/<version>`
+//!     rel_dir_path: &[".my-tool", "exocrate"],
+//!     version_slug: "example-version",
+//! };
 //!
-//! exocrate::parse_remote_archive! {
-//!     const REMOTE: RemoteArchive = "Cargo.toml" [
-//!         // `(std::env::consts::OS, std::env::consts::ARCH)` pairs you support.
-//!         (linux, x86_64),
-//!         (macos, x86_64),
-//!         (linux, aarch64),
-//!         (macos, aarch64),
-//!     ];
-//! }
+//! const REMOTE: exocrate::RemoteArchive = exocrate::RemoteArchive {
+//!     sha256: [0xaa; 32],
+//!     url: "https://example.com/linux-x86_64.tar.zst",
+//! };
 //!
 //! // FIXME: Detect whether running in tool-installed or tool-development environment. The typical
 //! // pattern would be:
@@ -84,7 +66,11 @@
 //! // - tool-installed => use `exocrate::Source::Remote(REMOTE)`,
 //! // - tool-development => use
 //! //       `exocrate::Source::Local("/path/to/dep-archive-builder-output.tar.zst".into())`.
-//! let source: exocrate::Source = exocrate::Source::Local("tests/my-tool-deps.tar.zst".into());
+//! let source: exocrate::Source = if std::env::var_os("MY_TOOL_DEV").is_some() {
+//!     exocrate::Source::Local("tests/my-tool-deps.tar.zst".into())
+//! } else {
+//!     exocrate::Source::Remote(REMOTE)
+//! };
 //!
 //! // Check whether `source` archive is already installed at `location`, and if not, install it.
 //! let installed_exocrate_dir = CONFIG.resolve_installation_dir_or_install(location, source)
@@ -188,6 +174,8 @@ pub enum Location {
     /// A location in the Cargo `target` directory if it can be resolved, and
     /// otherwise in the current working directory.
     LocalDev,
+    /// A caller-provided base directory.
+    Custom(PathBuf),
 }
 
 /// The source from which to install dependencies
@@ -242,9 +230,7 @@ impl Config {
 
         match source {
             Source::Remote(RemoteArchive { url, sha256 }) => {
-                let resp = ureq::get(url)
-                    .call()
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+                let resp = ureq::get(url).call().map_err(std::io::Error::other)?;
                 let reader = resp.into_body().into_reader();
                 Ok((SourceReader::Download(reader), Some(sha256)))
             }
@@ -256,8 +242,9 @@ impl Config {
     }
 
     /// Calculates the directory path:
-    /// - The parent is `~` for `UserGlobal` and `CARGO_MANIFEST_DIR/target` for
-    ///   `Local` (or `./target` if `CARGO_MANIFEST_DIR` is not set).
+    /// - The parent is `~` for `UserGlobal`, `CARGO_MANIFEST_DIR/target` for
+    ///   `Local` (or `./target` if `CARGO_MANIFEST_DIR` is not set), and the
+    ///   supplied path for `Custom`.
     /// - The remainder is `{self.rel_dir_path}/{self.version_slug}`.
     fn dir_path(&self, location: Location) -> PathBuf {
         let mut parts = match location {
@@ -271,6 +258,7 @@ impl Config {
                     .unwrap_or_else(|_| std::env::current_dir().unwrap())
                     .join("target")
             }
+            Location::Custom(path) => path,
         };
 
         parts.extend(self.rel_dir_path);
@@ -446,6 +434,7 @@ macro_rules! config {
         rel_dir_path: $rel_dir_path:expr,
         versioned_files: &[ $($path:literal),* $(,)? ] $(,)?
     };) => {
+        #[allow(long_running_const_eval)]
         $vis const $name: $crate::Config = {
             $crate::Config {
                 rel_dir_path: &$rel_dir_path,
@@ -810,20 +799,5 @@ mod tests {
 
         assert_eq!(CONFIG.rel_dir_path, &["test", "project"]);
         assert_eq!(CONFIG.version_slug.len(), 64);
-    }
-
-    #[test]
-    fn test_parse_remote_archive_macro() {
-        parse_remote_archive! {
-            const REMOTE: RemoteArchive = "../Cargo.toml" [
-                (linux, x86_64),
-                (linux, aarch64),
-                (macos, x86_64),
-                (macos, aarch64),
-            ];
-        }
-
-        assert!(REMOTE.url.starts_with("https://example.com/"));
-        assert_eq!(REMOTE.sha256.len(), 32);
     }
 }

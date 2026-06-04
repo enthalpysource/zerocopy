@@ -126,8 +126,35 @@ def rewrite_manifest(path: Path, packages: dict[str, Path]) -> bool:
     return changed
 
 
-def rewrite_trace_prefixes(root: Path, packages: dict[str, Path]) -> int:
-    prefixes = [(root.resolve(), ""), *((p.resolve(), "") for p in packages.values())]
+def trace_prefixes(
+    root: Path, packages_dir: Path, packages: dict[str, Path], extra_prefixes: list[tuple[Path, str]]
+) -> list[tuple[Path, str]]:
+    prefixes = [
+        *((p.resolve(), "") for p in packages.values()),
+        (root.resolve(), ""),
+        (packages_dir.resolve(), "packages"),
+        *extra_prefixes,
+    ]
+
+    deduped: dict[Path, str] = {}
+    for prefix, replacement in prefixes:
+        deduped.setdefault(prefix, replacement)
+    return sorted(deduped.items(), key=lambda p: len(str(p[0])), reverse=True)
+
+
+def rewrite_trace_prefixes(
+    root: Path,
+    packages_dir: Path,
+    packages: dict[str, Path],
+    extra_prefixes: list[tuple[Path, str]],
+) -> int:
+    prefixes = trace_prefixes(root, packages_dir, packages, extra_prefixes)
+    package_root_patterns = [
+        re.compile(
+            rf"(?<![A-Za-z0-9_.-])(?:/[^\s\"':]+)+/(?:packages|\.lake/packages)/{re.escape(name)}/"
+        )
+        for name in packages
+    ]
     count = 0
 
     for trace in [*root.rglob("*.trace"), *(t for p in packages.values() for t in p.rglob("*.trace"))]:
@@ -137,11 +164,26 @@ def rewrite_trace_prefixes(root: Path, packages: dict[str, Path]) -> int:
             continue
         new_content = content
         for prefix, replacement in prefixes:
-            new_content = new_content.replace(str(prefix) + os.sep, replacement)
+            prefix_text = str(prefix)
+            replacement_text = replacement + os.sep if replacement else ""
+            new_content = new_content.replace(prefix_text + os.sep, replacement_text)
+            if replacement:
+                new_content = new_content.replace(prefix_text, replacement)
+            else:
+                new_content = new_content.replace(prefix_text, "")
+        for pattern in package_root_patterns:
+            new_content = pattern.sub("", new_content)
         if new_content != content:
             trace.write_text(new_content)
             count += 1
     return count
+
+
+def parse_trace_prefix(value: str) -> tuple[Path, str]:
+    prefix, sep, replacement = value.partition("=")
+    if not prefix:
+        raise argparse.ArgumentTypeError("trace prefixes must start with a path")
+    return Path(prefix).resolve(), replacement if sep else ""
 
 
 def main() -> None:
@@ -152,6 +194,14 @@ def main() -> None:
         "--rewrite-traces",
         action="store_true",
         help="Also strip package/root absolute prefixes from .trace files",
+    )
+    parser.add_argument(
+        "--trace-prefix",
+        action="append",
+        type=parse_trace_prefix,
+        default=[],
+        metavar="ABS_PATH[=REPLACEMENT]",
+        help="Additional absolute trace prefix to rewrite when --rewrite-traces is set",
     )
     args = parser.parse_args()
 
@@ -167,7 +217,11 @@ def main() -> None:
     for manifest in [*root.rglob("lake-manifest.json"), *packages_dir.rglob("lake-manifest.json")]:
         changed += int(rewrite_manifest(manifest, packages))
 
-    trace_count = rewrite_trace_prefixes(root, packages) if args.rewrite_traces else 0
+    trace_count = (
+        rewrite_trace_prefixes(root, packages_dir, packages, args.trace_prefix)
+        if args.rewrite_traces
+        else 0
+    )
     print(f"rewrote {changed} Lake metadata files and {trace_count} trace files")
 
 

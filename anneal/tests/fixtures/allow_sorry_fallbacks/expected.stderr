@@ -40,19 +40,15 @@
  43 │ /// proof:
     ╰────
 
-  × invalid {...} notation, structure type expected
-  │   Post ret
-    ╭─[[PROJECT_ROOT]/src/lib.rs:44:7]
- 43 │     /// proof:
- 44 │ ╭─▶ ///   -- A deliberately broken explicit proof should NOT emit "declaration uses sorry"
- 45 │ │   ///   -- but instead natively fail on the syntax error "unknown tactic".
- 46 │ │   ///   exact {
- 47 │ │   ///       invalid_tactic
- 48 │ ├─▶ ///   }
-    · ╰──── here
- 49 │     /// ```
-    ╰────
+[External Error] generated/NamedBoundsValidationFailuresNamedBoundsValidationFailures22b4e0ecfe54227c/NamedBoundsValidationFailuresNamedBoundsValidationFailures22b4e0ecfe54227c.lean: Function expected at
+  Post
+but this term has type
+  ?m.1
 
+Note: Expected a function because this term is being applied to the argument
+  ret_
+
+Hint: The identifier `Post` is unknown, and Lean's `autoImplicit` option causes an unknown identifier to be treated as an implicitly bound variable with an unknown type. However, the unknown type cannot be a function, and a function is what Lean expects here. This is often the result of a typo or a missing `import` or `open` statement.
   × Tactic `rfl` failed: The left-hand side
   │   true == false
   │ is not definitionally equal to the right-hand side

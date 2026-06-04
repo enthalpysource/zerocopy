@@ -1,14 +1,12 @@
 use std::{
-    cmp, fs, io,
+    fs, io,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
     sync::OnceLock,
-    thread,
-    time::Duration,
 };
 
-use fs2::FileExt;
+use fs2::FileExt as _;
 use serde::Deserialize;
 use sha2::Digest;
 use walkdir::WalkDir;
@@ -164,6 +162,41 @@ fn get_toolchain_path() -> PathBuf {
         .clone()
 }
 
+fn get_toolchain_override_root(toolchain_path: &Path) -> &Path {
+    let install_dir = toolchain_path
+        .parent()
+        .and_then(Path::parent)
+        .expect("toolchain path should end in aeneas/bin");
+    let toolchain_dir = install_dir.parent().expect("install dir should be under toolchain");
+    let anneal_dir = toolchain_dir.parent().expect("toolchain dir should be under .anneal");
+    anneal_dir.parent().expect(".anneal dir should have an override root")
+}
+
+fn with_integration_slot<T>(f: impl FnOnce() -> T) -> T {
+    const INTEGRATION_JOBS: usize = 4;
+
+    let target_dir = get_target_dir();
+    fs::create_dir_all(&target_dir).expect("failed to create integration target directory");
+    let _lock = 'acquire: loop {
+        for slot in 0..INTEGRATION_JOBS {
+            let lock_path = target_dir.join(format!("anneal-integration-{slot}.lock"));
+            let lock =
+                fs::OpenOptions::new().create(true).write(true).open(&lock_path).unwrap_or_else(
+                    |e| panic!("failed to open integration lock {}: {e}", lock_path.display()),
+                );
+            match lock.try_lock_exclusive() {
+                Ok(()) => break 'acquire lock,
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+                Err(e) => panic!("failed to lock {}: {e}", lock_path.display()),
+            }
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    };
+
+    f()
+}
+
 fn check_source_freshness(source_dir: &Path) -> Result<(), anyhow::Error> {
     // Recursively scan the source directory for blacklisted files/directories.
     //
@@ -238,7 +271,6 @@ struct TestContext {
     test_name: String,
     sandbox_root: PathBuf,
     _temp_dir: Option<tempfile::TempDir>, // Kept alive to prevent deletion
-    test_config: TestConfig,
     home_dir: PathBuf,
 }
 
@@ -251,7 +283,6 @@ impl TestContext {
 
         let target_dir = get_target_dir();
         fs::create_dir_all(&target_dir)?;
-        let toolchain_path = get_toolchain_path();
         let temp = tempfile::Builder::new().prefix("anneal-test-").tempdir_in(&target_dir)?;
 
         let sandbox_root = temp.path().join(&test_name);
@@ -289,14 +320,7 @@ impl TestContext {
             }
         }
 
-        Ok(Self {
-            test_case_root,
-            test_name,
-            sandbox_root,
-            _temp_dir: temp_dir_to_store,
-            test_config: config.clone(),
-            home_dir,
-        })
+        Ok(Self { test_case_root, test_name, sandbox_root, _temp_dir: temp_dir_to_store, home_dir })
     }
 
     fn create_shim(
@@ -452,6 +476,8 @@ echo "---END-INVOCATION---" >> "{}"
         // Anneal calls the tools with the expected arguments.
 
         let toolchain_path = get_toolchain_path();
+        cmd.env("ANNEAL_TOOLCHAIN_DIR", get_toolchain_override_root(&toolchain_path));
+
         let real_charon = toolchain_path.join("charon");
         let shim_dir = self.create_shim("charon", &real_charon, charon_mock_mode).unwrap();
 
@@ -512,6 +538,10 @@ echo "---END-INVOCATION---" >> "{}"
 }
 
 fn run_integration_test(path: &Path) -> datatest_stable::Result<()> {
+    with_integration_slot(|| run_integration_test_locked(path))
+}
+
+fn run_integration_test_locked(path: &Path) -> datatest_stable::Result<()> {
     let path_str = path.to_string_lossy();
 
     let anneal_toml_content = fs::read_to_string(path)
@@ -946,6 +976,8 @@ fn assert_output_file(
     let toolchain_path = get_toolchain_path();
     let target_path_str = target_dir.to_str().unwrap();
     let toolchain_path_str = toolchain_path.to_str().unwrap();
+    let toolchain_root = toolchain_path.parent().and_then(Path::parent).unwrap();
+    let toolchain_root_str = toolchain_root.to_str().unwrap();
     let home_path_str = home_dir.to_str().unwrap();
     // Replace volatile environment-specific paths with static placeholders.
     //
@@ -959,6 +991,7 @@ fn assert_output_file(
         &actual_str
             .replace(replace_path, "[PROJECT_ROOT]")
             .replace(toolchain_path_str, "[CACHE_ROOT]")
+            .replace(toolchain_root_str, "[CACHE_ROOT]")
             .replace(home_path_str, "[HOME]")
             .replace(target_path_str, "[TARGET_DIR]"),
     );
@@ -1469,7 +1502,7 @@ fn sanitize_output(output: &str) -> String {
     clean = re_aeneas_time.replace_all(&clean, "Total execution time: <TIME> seconds").into_owned();
     clean = re_unpacked_time.replace_all(&clean, "Unpacked in <TIME> ms").into_owned();
     clean = re_lean_full_install
-        .replace_all(&clean, "Lean toolchain leanprover/lean4:v4.28.0-rc1 is already installed.\n")
+        .replace_all(&clean, "Lean toolchain leanprover/lean4:v4.30.0-rc2 is already installed.\n")
         .into_owned();
     clean = re_ip_port.replace_all(&clean, "127.0.0.1:<PORT>").into_owned();
     clean = re_rustup.replace_all(&clean, "[RUSTUP_TOOLCHAIN]").into_owned();

@@ -6,7 +6,7 @@ warning: Coroutine types are not supported yet
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-thread 'rustc' (<ID>) panicked at src/errors.rs:278:13:
+thread 'rustc' (<ID>) panicked at src/errors.rs:261:13:
 Coroutine types are not supported yet
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 warning: Thread panicked when extracting item `weird::async_foo`.
@@ -16,7 +16,7 @@ warning: Thread panicked when extracting item `weird::async_foo`.
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-thread 'rustc' (<ID>) panicked at src/errors.rs:278:13:
+thread 'rustc' (<ID>) panicked at src/errors.rs:261:13:
 Thread panicked when extracting item `weird::async_foo`.
 ERROR Compilation panicked
 error: could not compile `weird` (lib)
