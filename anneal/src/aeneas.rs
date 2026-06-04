@@ -11,11 +11,12 @@
 //    back to Rust.
 
 use std::{
+    ffi::OsString,
     fmt::Write,
     fs,
     io::{BufRead, BufReader},
-    path::Path,
-    process::{Command, Stdio},
+    path::{Path, PathBuf},
+    process::Stdio,
     sync::{Arc, Mutex},
 };
 
@@ -269,11 +270,15 @@ pub fn run_aeneas(
 
     // 4. Write Lakefile
     //
-    // If `ANNEAL_AENEAS_DIR` is set (e.g., in CI or local development via Docker),
-    // we use it. Otherwise, we default to the managed toolchain directory.
+    // Aeneas and its Lean dependencies are unpacked from the managed archive.
     let toolchain = crate::setup::Toolchain::resolve()?;
-    let path = toolchain.root.display();
-    let aeneas_dep = format!(r#"require aeneas from "{path}/backends/lean""#);
+    let path = materialize_aeneas_dependency(&tmp_lean_root, &lean_root, &toolchain)?;
+    let aeneas_dep = format!(
+        r#"-- Aeneas rev: {}
+require aeneas from "{}""#,
+        env!("ANNEAL_AENEAS_REV"),
+        path.display()
+    );
 
     let roots_str = lake_roots.iter().map(|r| format!("`{}", r)).collect::<Vec<_>>().join(", ");
 
@@ -333,6 +338,104 @@ lean_lib «User» where
     Ok(())
 }
 
+fn materialize_aeneas_dependency(
+    tmp_lean_root: &Path,
+    lean_root: &Path,
+    toolchain: &crate::setup::Toolchain,
+) -> Result<PathBuf> {
+    let vendor_root = tmp_lean_root.join("vendor").join("aeneas");
+    let lean_dst = vendor_root.join("backends").join("lean");
+    let packages_dst = vendor_root.join("packages");
+
+    println!("Materializing packages by copying from toolchain...");
+    copy_tree_writable(&toolchain.aeneas_lean_dir(), &lean_dst)
+        .context("Failed to copy Aeneas Lean package from toolchain")?;
+    copy_tree_writable(&toolchain.aeneas_root().join("packages"), &packages_dst)
+        .context("Failed to copy Aeneas Lean dependencies from toolchain")?;
+
+    Ok(lean_root.join("vendor").join("aeneas").join("backends").join("lean"))
+}
+
+fn copy_tree_writable(src: &Path, dst: &Path) -> Result<()> {
+    if dst.exists() {
+        fs::remove_dir_all(dst)
+            .with_context(|| format!("Failed to remove stale directory {}", dst.display()))?;
+    }
+
+    for entry in WalkDir::new(src) {
+        let entry = entry.with_context(|| format!("Failed to walk {}", src.display()))?;
+        let path = entry.path();
+        let rel = path.strip_prefix(src).with_context(|| {
+            format!("Failed to relativize {} against {}", path.display(), src.display())
+        })?;
+        let target = dst.join(rel);
+
+        if entry.file_type().is_dir() {
+            fs::create_dir_all(&target)
+                .with_context(|| format!("Failed to create directory {}", target.display()))?;
+        } else if entry.file_type().is_symlink() {
+            let link = fs::read_link(path)
+                .with_context(|| format!("Failed to read symlink {}", path.display()))?;
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent).with_context(|| {
+                    format!("Failed to create parent directory {}", parent.display())
+                })?;
+            }
+            create_symlink(&link, &target)
+                .with_context(|| format!("Failed to copy symlink {}", target.display()))?;
+        } else if entry.file_type().is_file() {
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent).with_context(|| {
+                    format!("Failed to create parent directory {}", parent.display())
+                })?;
+            }
+            fs::copy(path, &target).with_context(|| {
+                format!("Failed to copy {} to {}", path.display(), target.display())
+            })?;
+            make_writable(&target)?;
+        }
+    }
+
+    for entry in WalkDir::new(dst).contents_first(true) {
+        let entry = entry.with_context(|| format!("Failed to walk {}", dst.display()))?;
+        if !entry.file_type().is_symlink() {
+            make_writable(entry.path())?;
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(unix)]
+fn create_symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(src, dst)
+}
+
+#[cfg(windows)]
+fn create_symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
+    if src.is_dir() {
+        std::os::windows::fs::symlink_dir(src, dst)
+    } else {
+        std::os::windows::fs::symlink_file(src, dst)
+    }
+}
+
+fn make_writable(path: &Path) -> Result<()> {
+    let metadata =
+        fs::symlink_metadata(path).with_context(|| format!("Failed to stat {}", path.display()))?;
+    if metadata.file_type().is_symlink() {
+        return Ok(());
+    }
+    let mut perms = metadata.permissions();
+    if perms.readonly() {
+        #[allow(clippy::permissions_set_readonly_false)]
+        perms.set_readonly(false);
+        fs::set_permissions(path, perms)
+            .with_context(|| format!("Failed to make {} writable", path.display()))?;
+    }
+    Ok(())
+}
+
 /// Generates Anneal `Specs.lean` and writes `Generated.lean`, but does not run the `lake build`.
 pub fn generate_lean_workspace(roots: &LockedRoots, artifacts: &[AnnealArtifact]) -> Result<()> {
     let lean_generated_root = roots.lean_generated_root();
@@ -375,219 +478,6 @@ pub fn generate_lean_workspace(roots: &LockedRoots, artifacts: &[AnnealArtifact]
     write_if_changed(&lean_generated_root.join("Generated.lean"), &generated_imports)
         .context("Failed to write Generated.lean")?;
 
-    // To avoid a slow full rebuild of dependencies in the newly generated
-    // workspace, we manually materialize the dependencies and fix up Lake's
-    // build trace files.
-    //
-    // Lake records absolute paths in its trace files. By default, when we
-    // generate a workspace and run `lake build`, Lake clones the dependencies
-    // into the workspace's `.lake/packages` directory. Since the paths in the
-    // clone do not match the paths in the toolchain where dependencies were
-    // pre-built, Lake considers the traces invalid and rebuilds everything.
-    //
-    // We bypass this by:
-    // - Manually writing the manifest with local file URLs.
-    // - Copying the pre-built dependency directories directly from the
-    //   toolchain to avoid cloning (using our symlink-optimized materialize
-    //   helper).
-    // - Post-processing the trace files to replace toolchain paths with
-    //   workspace paths.
-
-    // We read the `lake-manifest.json` generated during toolchain setup,
-    // modify it to include Aeneas as a dependency, and write it directly
-    // to the workspace. This prevents Lake from running dependency
-    // resolution and post-update hooks that would attempt to download
-    // external assets.
-    println!("Writing modified manifest to generated workspace...");
-    let lean_root = roots.lean_root();
-    let toolchain = crate::setup::Toolchain::resolve()?;
-    let toolchain_manifest_path =
-        toolchain.root.join("backends").join("lean").join("lake-manifest.json");
-    let user_manifest_path = lean_root.join("lake-manifest.json");
-
-    if toolchain_manifest_path.exists() {
-        let content = fs::read_to_string(&toolchain_manifest_path)
-            .context("Failed to read toolchain manifest")?;
-        let mut manifest: serde_json::Value =
-            serde_json::from_str(&content).context("Failed to parse toolchain manifest")?;
-
-        // Change name to anneal_verification
-        manifest["name"] = serde_json::Value::String("anneal_verification".to_string());
-
-        // Read Aeneas HEAD commit hash from the static file in the
-        // toolchain. This avoids invoking Git at runtime, which would crash
-        // inside Docker containers due to Git's "dubious ownership"
-        // security checks (due to mapped UIDs).
-        let toolchain_aeneas_dir = toolchain.root.join("backends").join("lean");
-        let commit_file = toolchain_aeneas_dir.join("aeneas-commit.txt");
-        let aeneas_rev = fs::read_to_string(&commit_file)
-            .with_context(|| format!("Failed to read static Aeneas commit hash from {}. Please re-run `cargo anneal setup`.", commit_file.display()))?
-            .trim()
-            .to_string();
-
-        // Inject aeneas dependency
-        let aeneas_dep = serde_json::json!({
-            "configFile": "lakefile.lean",
-            "inherited": false,
-            "inputRev": "main",
-            "manifestFile": "lake-manifest.json",
-            "name": "aeneas",
-            "rev": aeneas_rev,
-            "scope": "",
-            "subDir": null,
-            "type": "git",
-            "url": format!("file://{}", toolchain_aeneas_dir.to_str().unwrap())
-        });
-
-        if let Some(packages) = manifest["packages"].as_array_mut() {
-            // Rewrite any path dependencies (like mathlib) from the
-            // toolchain's relative structure (../../packages/mathlib) to
-            // the project's local sandbox structure
-            // (.lake/packages/mathlib).
-            for pkg in packages.iter_mut() {
-                if pkg["type"] == "path" {
-                    if let Some(dir_str) = pkg["dir"].as_str() {
-                        if dir_str == "../../packages/mathlib" {
-                            pkg["dir"] =
-                                serde_json::Value::String(".lake/packages/mathlib".to_string());
-                        }
-                    }
-                }
-            }
-
-            packages.insert(0, aeneas_dep);
-        } else {
-            bail!("Manifest packages is not an array");
-        }
-
-        let new_content = serde_json::to_string_pretty(&manifest)
-            .context("Failed to serialize modified manifest")?;
-        fs::write(&user_manifest_path, new_content).context("Failed to write user manifest")?;
-    } else {
-        bail!("Toolchain manifest missing at {}", toolchain_manifest_path.display());
-    }
-
-    // We manually materialize Aeneas and all resolved dependencies from
-    // the toolchain into the workspace's `.lake/packages` directory.
-    // We use our optimized symlink materializer to avoid physical copies.
-    println!("Materializing packages by copying from toolchain...");
-    let user_project_packages = lean_root.join(".lake").join("packages");
-
-    // Ensure .lake/packages exists
-    fs::create_dir_all(&user_project_packages)
-        .context("Failed to create .lake/packages directory")?;
-
-    // Copy Aeneas
-    let toolchain_aeneas_dir = toolchain.root.join("backends").join("lean");
-    let user_aeneas_dir = user_project_packages.join("aeneas");
-
-    if toolchain_aeneas_dir.exists() {
-        materialize_package_optimized(&toolchain_aeneas_dir, &user_aeneas_dir)
-            .context("Failed to materialize Aeneas package")?;
-
-        // Rename the Aeneas precompiled configuration directory from
-        // `[anonymous]` to `aeneas`, and patch its trace file so that
-        // Lake validates the precompiled configuration without
-        // re-elaborating it.
-        let anon_config = user_aeneas_dir.join(".lake").join("config").join("[anonymous]");
-        let user_config = user_aeneas_dir.join(".lake").join("config").join("aeneas");
-        if anon_config.exists() {
-            fs::create_dir_all(user_config.parent().unwrap())
-                .context("Failed to create config parent directory")?;
-            fs::rename(&anon_config, &user_config)
-                .context("Failed to rename Aeneas precompiled config directory")?;
-
-            let trace_file = user_config.join("lakefile.olean.trace");
-            if trace_file.exists() {
-                let content = fs::read_to_string(&trace_file)
-                    .context("Failed to read Aeneas config trace file")?;
-                let new_content = content.replace("[anonymous]", "aeneas");
-                fs::write(&trace_file, new_content)
-                    .context("Failed to write patched Aeneas config trace file")?;
-            }
-        }
-
-        // Add Git remote 'origin' to match manifest
-        let status = Command::new("git")
-            .args([
-                "remote",
-                "add",
-                "origin",
-                &format!("file://{}", toolchain_aeneas_dir.to_str().unwrap()),
-            ])
-            .current_dir(&user_aeneas_dir)
-            .status()
-            .context("Failed to run `git remote add` in Aeneas clone")?;
-        if !status.success() {
-            bail!("`git remote add` failed in Aeneas clone");
-        }
-    }
-
-    // Copy dependencies
-    let toolchain_packages_dir = toolchain.root.join("packages");
-    if toolchain_packages_dir.exists() {
-        for entry in fs::read_dir(&toolchain_packages_dir)
-            .context("Failed to read toolchain packages directory")?
-        {
-            let entry = entry.context("Failed to read directory entry")?;
-            let path = entry.path();
-            if path.is_dir() {
-                let pkg_name = path.file_name().unwrap().to_str().unwrap();
-                let user_pkg_dir = user_project_packages.join(pkg_name);
-
-                materialize_package_optimized(&path, &user_pkg_dir)
-                    .with_context(|| format!("Failed to materialize package {}", pkg_name))?;
-
-                // Update Git remote URL to match manifest
-                let status = Command::new("git")
-                    .args([
-                        "remote",
-                        "set-url",
-                        "origin",
-                        &format!("file://{}", path.to_str().unwrap()),
-                    ])
-                    .current_dir(&user_pkg_dir)
-                    .status()
-                    .context("Failed to run `git remote set-url` in package clone")?;
-                if !status.success() {
-                    bail!("`git remote set-url` failed in package clone for {}", pkg_name);
-                }
-            }
-        }
-    }
-
-    // Finally, we fix the non-portable absolute paths embedded in Lake's
-    // `.trace` files. We replace all occurrences of paths pointing to the
-    // toolchain with the corresponding paths in the workspace's clone
-    // directory. This convinces Lake that the pre-built artifacts are
-    // valid for the current workspace location.
-    println!("Post-processing traces in the clone...");
-    let toolchain_aeneas = toolchain.root.join("backends").join("lean");
-    let toolchain_aeneas_str = toolchain_aeneas.to_str().unwrap();
-    let user_project_aeneas = user_project_packages.join("aeneas");
-    let user_project_aeneas_str = user_project_aeneas.to_str().unwrap();
-    let toolchain_packages_str = toolchain_packages_dir.to_str().unwrap();
-    let user_project_packages_str = user_project_packages.to_str().unwrap();
-
-    // Process all packages in .lake/packages
-    if user_project_packages.exists() {
-        for entry in
-            fs::read_dir(&user_project_packages).context("Failed to read user project packages")?
-        {
-            let entry = entry.context("Failed to read directory entry")?;
-            let path = entry.path();
-            if path.is_dir() {
-                crate::util::patch_trace_files(
-                    &path.join(".lake").join("build"),
-                    &[
-                        (toolchain_aeneas_str, user_project_aeneas_str),
-                        (toolchain_packages_str, user_project_packages_str),
-                    ],
-                )?;
-            }
-        }
-    }
-
     Ok(())
 }
 
@@ -600,12 +490,8 @@ pub fn verify_lean_workspace(roots: &LockedRoots, artifacts: &[AnnealArtifact]) 
 
 /// Runs the Lean build process and diagnostics.
 ///
-/// This function:
-/// 1. Patches `lake-manifest.json` if `ANNEAL_AENEAS_DIR` is set (for local dev).
-/// 2. Fetches Mathlib cache to avoid rebuilding it.
-/// 3. Builds the project with `lake build`.
-/// 4. Executes the `Diagnostics.lean` script to check proofs.
-/// 5. Parses JSON output from the script and maps it back to Rust source.
+/// This function builds the generated project, runs Lean diagnostics, and maps
+/// diagnostics back to Rust source.
 fn run_lake(roots: &LockedRoots, artifacts: &[AnnealArtifact]) -> Result<()> {
     let generated = roots.lean_generated_root();
     let lean_root = generated.parent().unwrap();
@@ -613,9 +499,10 @@ fn run_lake(roots: &LockedRoots, artifacts: &[AnnealArtifact]) -> Result<()> {
 
     // 2. Build the project (dependencies only)
     let toolchain = crate::setup::Toolchain::resolve()?;
-    let mut cmd = toolchain.command(Tool::Lake);
-    cmd.args(["build", "Generated", "Anneal"]);
+    let mut cmd = std::process::Command::new(toolchain.lean_bin().join("lake"));
+    cmd.args(["--keep-toolchain", "build", "Generated", "Anneal"]);
     cmd.current_dir(lean_root);
+    configure_lake_command(&mut cmd, &toolchain)?;
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
@@ -689,9 +576,10 @@ fn run_lake(roots: &LockedRoots, artifacts: &[AnnealArtifact]) -> Result<()> {
         let specs_rel_path = format!("generated/{}/{}", slug, artifact.lean_spec_file_name());
 
         let toolchain = crate::setup::Toolchain::resolve()?;
-        let mut cmd = toolchain.command(Tool::Lake);
-        cmd.args(["env", "lean", "--json", &specs_rel_path]);
+        let mut cmd = std::process::Command::new(toolchain.lean_bin().join("lake"));
+        cmd.args(["--keep-toolchain", "env", "lean", "--json", &specs_rel_path]);
         cmd.current_dir(lean_root);
+        configure_lake_command(&mut cmd, &toolchain)?;
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
 
@@ -797,6 +685,35 @@ fn run_lake(roots: &LockedRoots, artifacts: &[AnnealArtifact]) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn configure_lake_command(
+    cmd: &mut std::process::Command,
+    toolchain: &crate::setup::Toolchain,
+) -> Result<()> {
+    cmd.env("LEAN_SYSROOT", toolchain.lean_sysroot());
+    cmd.env("MATHLIB_NO_CACHE_ON_UPDATE", "1");
+    cmd.env("PATH", prepend_paths_to_env_var("PATH", &[toolchain.lean_bin()])?);
+
+    let lib_env_var =
+        if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" } else { "LD_LIBRARY_PATH" };
+    cmd.env(
+        lib_env_var,
+        prepend_paths_to_env_var(
+            lib_env_var,
+            &[toolchain.lean_sysroot().join("lib"), toolchain.lean_sysroot().join("lib/lean")],
+        )?,
+    );
+
+    Ok(())
+}
+
+fn prepend_paths_to_env_var(var_name: &str, new_paths: &[PathBuf]) -> Result<OsString> {
+    let mut paths = new_paths.to_vec();
+    if let Some(existing) = std::env::var_os(var_name) {
+        paths.extend(std::env::split_paths(&existing));
+    }
+    std::env::join_paths(paths).with_context(|| format!("Failed to prepend paths to {var_name}"))
 }
 
 /// Resolves a Lean diagnostic to a Rust source location.
@@ -996,184 +913,6 @@ fn write_if_changed(path: &std::path::Path, content: &str) -> Result<()> {
         }
     }
     std::fs::write(path, content).context(format!("Failed to write {:?}", path))?;
-    Ok(())
-}
-
-/// Helper to make a copied file writable inside the project sandbox.
-fn make_file_writable(path: &Path) -> Result<()> {
-    let mut perms = fs::metadata(path)?.permissions();
-    #[allow(clippy::permissions_set_readonly_false)]
-    perms.set_readonly(false);
-    fs::set_permissions(path, perms).context("Failed to set write permissions")?;
-    Ok(())
-}
-
-/// Helper to recursively restore write permissions to a physically copied
-/// directory (e.g., `.git`) inside the project sandbox. This is safe
-/// because it does not contain symlinks.
-fn make_dir_writable_recursive(path: &Path) -> Result<()> {
-    let walker = WalkDir::new(path).into_iter();
-    for entry in walker {
-        let entry = entry.context("Failed to walk directory for write permissions")?;
-        make_file_writable(entry.path())?;
-    }
-    Ok(())
-}
-
-/// Helper to recursively copy a directory using the system `cp -r`
-/// command. This is used for small directories like `.git` which contain
-/// only metadata.
-fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<()> {
-    let status = Command::new("cp")
-        .args(["-r", src.to_str().unwrap(), dest.to_str().unwrap()])
-        .status()
-        .context("Failed to run cp -r for directory copy")?;
-    if !status.success() {
-        bail!("cp -r failed for {}", src.display());
-    }
-    Ok(())
-}
-
-/// Walk the source build directory recursively, creating all
-/// subdirectories, copying `.trace` files physically (so they can be
-/// patched), and symlinking all other files (like `.olean` binaries) to
-/// save space and time.
-fn materialize_build_dir_optimized(src_build: &Path, dest_build: &Path) -> Result<()> {
-    let walker = WalkDir::new(src_build).into_iter();
-    for entry in walker {
-        let entry = entry.context("Failed to walk source build directory")?;
-        let path = entry.path();
-        let rel_path = path.strip_prefix(src_build).unwrap();
-        let dest_path = dest_build.join(rel_path);
-
-        if path.is_dir() {
-            fs::create_dir_all(&dest_path)
-                .with_context(|| format!("Failed to create directory {}", dest_path.display()))?;
-        } else if path.is_file() {
-            if path.extension().map_or(false, |ext| ext == "trace") {
-                // Copy .trace file physically so we can patch its paths!
-                fs::copy(path, &dest_path)
-                    .with_context(|| format!("Failed to copy trace file {}", path.display()))?;
-                make_file_writable(&dest_path)?;
-            } else {
-                // Create symlink for .olean or other binary build files
-                #[cfg(unix)]
-                std::os::unix::fs::symlink(path, &dest_path)
-                    .with_context(|| format!("Failed to symlink build file {}", path.display()))?;
-            }
-        }
-    }
-    Ok(())
-}
-
-/// Materializes a pre-built toolchain package inside the user project's
-/// `.lake/packages` directory in an optimized way.
-///
-/// Instead of physically copying the package (which is slow), it only
-/// copies metadata files and the `.git` directory, and creates symbolic
-/// links for the massive source directories and `.lake/build` directory.
-fn materialize_package_optimized(src_dir: &Path, dest_dir: &Path) -> Result<()> {
-    if dest_dir.exists() {
-        fs::remove_dir_all(dest_dir).context("Failed to remove existing package directory")?;
-    }
-    fs::create_dir_all(dest_dir).context("Failed to create package directory")?;
-
-    for entry in fs::read_dir(src_dir).context("Failed to read source package directory")? {
-        let entry = entry.context("Failed to read directory entry")?;
-        let path = entry.path();
-        let file_name = path.file_name().unwrap().to_str().unwrap();
-
-        if path.is_file() {
-            // Copy top-level metadata files
-            if file_name == "lakefile.lean"
-                || file_name == "lakefile.toml"
-                || file_name == "lean-toolchain"
-                || file_name == "lake-manifest.json"
-            {
-                let dest_file = dest_dir.join(file_name);
-                fs::copy(&path, &dest_file)
-                    .with_context(|| format!("Failed to copy file {}", file_name))?;
-                make_file_writable(&dest_file)?;
-            } else if path.extension().map_or(false, |ext| ext == "lean") {
-                // Symlink root-level Lean source files (like
-                // Aeneas.lean, Qq.lean, Aesop.lean)
-                #[cfg(unix)]
-                std::os::unix::fs::symlink(&path, dest_dir.join(file_name))
-                    .with_context(|| format!("Failed to symlink root Lean file {}", file_name))?;
-            }
-        } else if path.is_dir() {
-            let pkg_name = dest_dir.file_name().unwrap().to_str().unwrap();
-            if file_name == ".git" {
-                // Copy the .git directory so Lake thinks it's a valid
-                // git clone.
-                let dest_git = dest_dir.join(".git");
-                copy_dir_recursive(&path, &dest_git)?;
-                make_dir_writable_recursive(&dest_git)?;
-            } else if file_name == "widget" && pkg_name == "proofwidgets" {
-                // Special case: proofwidgets has a custom JS widget
-                // compilation step that writes to
-                // `widget/package-lock.json.hash` and runs `npm
-                // install`. We must physically copy this folder and
-                // make it writable so it can execute locally inside the
-                // sandbox without writing to the toolchain.
-                let dest_widget = dest_dir.join("widget");
-                copy_dir_recursive(&path, &dest_widget)?;
-                make_dir_writable_recursive(&dest_widget)?;
-            } else if file_name == ".lake" {
-                // Recreate the `.lake` structure and copy
-                // precompiled build and config data.
-                let src_build = path.join("build");
-                let src_config = path.join("config");
-                let dest_lake = dest_dir.join(".lake");
-                let dest_build = dest_lake.join("build");
-                let dest_config = dest_lake.join("config");
-
-                if src_build.exists() {
-                    fs::create_dir_all(&dest_build)
-                        .context("Failed to create dest build directory")?;
-                    materialize_build_dir_optimized(&src_build, &dest_build)?;
-                }
-
-                if src_config.exists() {
-                    // Copy precompiled config
-                    // physically and make it
-                    // writable.
-                    copy_dir_recursive(&src_config, &dest_config)?;
-                    make_dir_writable_recursive(&dest_config)?;
-
-                    // Adjust the package index (`idx`)
-                    // in the trace file. Since Aeneas
-                    // is prepended at index 0 in the
-                    // sandbox manifest, every other
-                    // dependency's index shifts by +1.
-                    //
-                    // We parse the trace JSON, increment
-                    // the `idx` field, and write it back.
-                    let trace_file = dest_config.join(pkg_name).join("lakefile.olean.trace");
-                    if trace_file.exists() {
-                        let content = fs::read_to_string(&trace_file)
-                            .context("Failed to read trace file during config load")?;
-                        if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content) {
-                            if let Some(idx) = json["idx"].as_i64() {
-                                json["idx"] = serde_json::Value::Number((idx + 1).into());
-                                let new_content = serde_json::to_string_pretty(&json)
-                                    .context("Failed to serialize patched config trace")?;
-                                fs::write(&trace_file, new_content)
-                                    .context("Failed to write patched config trace file")?;
-                            }
-                        }
-                    }
-                }
-            } else {
-                // This is a source directory (e.g., `Mathlib/`,
-                // `Aeneas/`, `Batteries/`). We create a SYMLINK to it
-                // from the toolchain to share all .lean files!
-                #[cfg(unix)]
-                std::os::unix::fs::symlink(&path, dest_dir.join(file_name))
-                    .with_context(|| format!("Failed to symlink directory {}", file_name))?;
-            }
-        }
-    }
     Ok(())
 }
 

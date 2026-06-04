@@ -374,7 +374,13 @@
             ''
             "python3 ${./rewrite-lake-vendor.py} --root . --packages-dir ../../packages"
             "steam-run lake build"
-            "python3 ${./rewrite-lake-vendor.py} --root . --packages-dir ../../packages --rewrite-traces"
+            "python3 ${./rewrite-lake-vendor.py} --root . --packages-dir ../../packages --rewrite-traces --trace-prefix \"$leanToolchain=lean\""
+            "TRACE_ABS_RE='(^|[\"[:space:]=:])/(nix/store|build|private/tmp/nix-build|ANNEAL_PLACEHOLDER_ROOT)'"
+            "if find . ../../packages -type f -name \"*.trace\" -exec grep -EIl \"\$TRACE_ABS_RE\" {} + | tee /tmp/non-relocatable-traces | grep -q .; then"
+            "  echo \"ERROR: non-relocatable paths remain in Lake trace files\" >&2"
+            "  cat /tmp/non-relocatable-traces >&2"
+            "  exit 1"
+            "fi"
             # Prune unused Lean modules and bulky upstream metadata.
             ''
               python3 << 'EOF'
@@ -395,7 +401,6 @@
                               rel_trace = os.path.relpath(abs_trace, traces_dir)
                               mod_path = os.path.splitext(rel_trace)[0]
                               used_modules.add(mod_path)
-                  print(f"  - Found {len(used_modules)} used modules.")
                   all_lean_files = []
                   for root, dirs, files in os.walk(pkg_dir):
                       if ".lake" in os.path.split(root)[1] or ".git" in os.path.split(root)[1]:
@@ -406,6 +411,10 @@
                               rel_lean = os.path.relpath(abs_lean, pkg_dir)
                               all_lean_files.append(rel_lean)
                   print(f"  - Found {len(all_lean_files)} total .lean files.")
+                  if os.path.basename(pkg_dir) != "mathlib":
+                      used_modules.update(os.path.splitext(rel)[0] for rel in all_lean_files)
+                      print("  - Keeping all Lean modules for non-Mathlib package.")
+                  print(f"  - Keeping {len(used_modules)} modules.")
                   unused_count = 0
                   for rel_lean in all_lean_files:
                       if rel_lean == "lakefile.lean":
@@ -508,13 +517,12 @@
             "    strip \"\$file\" || true"
             "  fi"
             "done"
-            # Leave one stable placeholder for any residual absolute trace paths.
-            "echo \"Inserting relocatable placeholders inside trace files...\""
-            "find $TMPDIR/dist_staging -type f -name \"*.trace\" | while read -r trace_file; do"
-            "  substituteInPlace \"\$trace_file\" \\"
-            "    --replace \"/build/aeneas/packages\" \"/ANNEAL_PLACEHOLDER_ROOT/aeneas/packages\" \\"
-            "    --replace \"/build/aeneas/backends/lean\" \"/ANNEAL_PLACEHOLDER_ROOT/aeneas/backends/lean\""
-            "done"
+            "TRACE_ABS_RE='(^|[\"[:space:]=:])/(nix/store|build|private/tmp/nix-build|ANNEAL_PLACEHOLDER_ROOT)'"
+            "if find $TMPDIR/dist_staging -type f -name \"*.trace\" -exec grep -EIl \"\$TRACE_ABS_RE\" {} + | tee /tmp/non-relocatable-staged-traces | grep -q .; then"
+            "  echo \"ERROR: non-relocatable paths remain in staged Lake trace files\" >&2"
+            "  cat /tmp/non-relocatable-staged-traces >&2"
+            "  exit 1"
+            "fi"
             "chmod -R a-w $TMPDIR/dist_staging"
             "cd $TMPDIR/dist_staging"
             "tar -cf $out *"
