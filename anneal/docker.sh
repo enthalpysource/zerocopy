@@ -34,14 +34,16 @@ if [ "${DOCKER_CMD[0]}" = "podman" ]; then
     ARG_GID=1001
 fi
 
-# Resolve the directory paths required to mount the workspace volume into the
-# container. This assumes that the script is located in the root of the
-# `anneal` workspace.
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+# Resolve the directory paths required to build the image and mount the
+# workspace volume into the container. The Docker build context is the repo
+# worktree root so the Dockerfile can copy both `anneal/` and the root-level
+# `exocrate/` crate.
+ANNEAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+WORKTREE_DIR="$(cd "$ANNEAL_DIR/.." >/dev/null 2>&1 && pwd)"
 # To avoid pollution between different git worktrees, we generate a unique
 # worktree ID and store it in a file. This ensures each worktree gets its own
 # isolated cache volume and Docker image tag.
-WORKTREE_ID_FILE="$DIR/.docker-worktree-id"
+WORKTREE_ID_FILE="$ANNEAL_DIR/.docker-worktree-id"
 if [ ! -f "$WORKTREE_ID_FILE" ]; then
     if command -v uuidgen >/dev/null 2>&1; then
         uuidgen > "$WORKTREE_ID_FILE"
@@ -63,7 +65,7 @@ BUILD_CACHE=$(mktemp)
 # and capture its output to prevent terminal spam during cached runs. If the
 # build takes longer than 5 seconds, we assume a rebuild is occurring and
 # stream the output to the terminal so the developer knows why it is pausing.
-DOCKER_BUILDKIT=1 "${DOCKER_CMD[@]}" build --progress=plain --build-arg UID=$ARG_UID --build-arg GID=$ARG_GID -t "$IMAGE_NAME" -f "$DIR/Dockerfile" "$DIR" > "$BUILD_CACHE" 2>&1 &
+DOCKER_BUILDKIT=1 "${DOCKER_CMD[@]}" build --progress=plain --build-arg UID=$ARG_UID --build-arg GID=$ARG_GID -t "$IMAGE_NAME" -f "$ANNEAL_DIR/Dockerfile" "$WORKTREE_DIR" > "$BUILD_CACHE" 2>&1 &
 BUILD_PID=$!
 
 # Wait up to 5 seconds for the build to finish silently.
@@ -185,10 +187,10 @@ done
 # Determine the user's current working directory relative to the repository.
 # This path is passed to Docker so that the container executes the requested
 # command in the same relative directory as the caller.
-REL_PATH=$(realpath --relative-to="$DIR" "$(pwd)" 2>/dev/null || echo ".")
+REL_PATH=$(realpath --relative-to="$WORKTREE_DIR" "$(pwd)" 2>/dev/null || echo "anneal")
 WORKDIR="/workspace/$REL_PATH"
 
 exec "${DOCKER_CMD[@]}" run "${DOCKER_FLAGS[@]}" \
-    -v "$DIR:/workspace" \
+    -v "$WORKTREE_DIR:/workspace" \
     -w "$WORKDIR" \
     "$IMAGE_NAME" "$@"
