@@ -7,11 +7,11 @@
    ╰────
 
    Compiling split v0.1.0 ([PROJECT_ROOT])
-warning: when processing starting pattern `crate::main`: path `crate::main` does not correspond to any item
+warning: failed to resolve item path `crate::main`: path `crate::main` does not correspond to any item
 
 
-thread 'rustc' (<ID>) panicked at src/errors.rs:278:13:
-when processing starting pattern `crate::main`: path `crate::main` does not correspond to any item
+thread 'rustc' (<ID>) panicked at src/errors.rs:261:13:
+failed to resolve item path `crate::main`: path `crate::main` does not correspond to any item
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ERROR Compilation panicked
 error: could not compile `split` (lib)

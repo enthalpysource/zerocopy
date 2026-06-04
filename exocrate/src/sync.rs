@@ -91,7 +91,7 @@ impl<'a> ManagedDirName<'a> {
         let lock_file =
             OpenOptions::new().read(true).write(true).create(true).open(&lock_file_path)?;
 
-        <_ as fs4::FileExt>::lock(&lock_file)?;
+        <_ as fs2::FileExt>::lock_exclusive(&lock_file)?;
 
         let staging_dir = self.staging();
 
@@ -106,7 +106,7 @@ impl<'a> ManagedDirName<'a> {
                 if !self.completed {
                     let _ = fs::remove_dir_all(&self.staging_dir);
                 }
-                let _ = <_ as fs4::FileExt>::unlock(&self.lock_file);
+                let _ = <_ as fs2::FileExt>::unlock(&self.lock_file);
             }
         }
 
