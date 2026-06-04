@@ -12,7 +12,7 @@
 ///   unfold get_size_of_empty_tuple at h_returns
 ///   simp_all
 ///   subst h_returns
-///   simp_all
+///   simp [Anneal.HasStaticLayout.layout, Anneal.HasStaticSpecLayout.layout]
 /// proof (h_valid):
 ///   unfold get_size_of_empty_tuple at h_returns
 ///   simp_all
@@ -37,7 +37,7 @@ pub fn get_size_of_empty_tuple() -> usize {
 ///   unfold get_align_of_empty_tuple at h_returns
 ///   simp_all
 ///   subst h_returns
-///   simp_all
+///   simp [Anneal.HasStaticLayout.layout, Anneal.HasStaticSpecLayout.layout]
 /// proof (h_valid):
 ///   unfold get_align_of_empty_tuple at h_returns
 ///   simp_all

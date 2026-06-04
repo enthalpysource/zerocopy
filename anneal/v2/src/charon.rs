@@ -229,13 +229,19 @@ pub fn run_charon(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "exocrate_tests")]
     use super::*;
+    #[cfg(feature = "exocrate_tests")]
     use crate::resolve::{Args, resolve_roots};
+    #[cfg(feature = "exocrate_tests")]
     use crate::scanner::{ScanMode, scan_workspace};
+    #[cfg(feature = "exocrate_tests")]
     use clap::Parser as _;
+    #[cfg(feature = "exocrate_tests")]
     use std::fs;
 
     // Shared helper to parse LLBC output and verify local status and compiled body variant.
+    #[cfg(feature = "exocrate_tests")]
     fn assert_fn_body(
         path: &std::path::Path,
         components: &[&str],

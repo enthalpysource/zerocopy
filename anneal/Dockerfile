@@ -57,17 +57,16 @@ WORKDIR /workspace
 COPY --from=extractor --chown=anneal:anneal /app/Cargo.toml.no_workspace ./Cargo.toml
 COPY --chown=anneal:anneal Cargo.lock ./
 
-# Copy source files needed for setup.
-COPY --chown=anneal:anneal src/setup.rs src/util.rs ./src/
+# Copy source files needed to compile dependency-heavy modules.
+COPY --chown=anneal:anneal src/setup.rs ./src/
+COPY --chown=anneal:anneal exocrate/Cargo.toml ./exocrate/Cargo.toml
+COPY --chown=anneal:anneal exocrate/src ./exocrate/src
 COPY --chown=anneal:anneal build.rs ./
-COPY --chown=anneal:anneal tools/prune_mathlib.py ./tools/
 
-# Create a minimal `main.rs` that runs setup, and a dummy test file.
-# This allows us to build all dependencies (including dev-dependencies)
-# in the image while still being able to run `setup`. It also avoids taking
-# a dependency on *most* source files, avoiding unnecessary container rebuilds
-# when source files change.
-RUN echo 'mod setup; mod util; fn main() -> anyhow::Result<()> { setup::run_setup() }' > src/main.rs && \
+# Create a minimal `main.rs` and a dummy test file.
+# This allows us to build dependencies in the image without copying the full
+# source tree, avoiding unnecessary container rebuilds when source files change.
+RUN echo 'mod setup; fn main() {}' > src/main.rs && \
     mkdir tests && echo 'fn main() {}' > tests/integration.rs
 
 # Build dependencies to cache them in the image.
@@ -78,19 +77,9 @@ RUN echo 'mod setup; mod util; fn main() -> anyhow::Result<()> { setup::run_setu
 RUN cargo build && \
     cargo build --tests
 
-# Pre-build Lean libraries using the minimal binary.
-#
-# We also generate the import graph and prune unused Mathlib artifacts here
-# to reduce the image size. This must be done after `cargo run` because that
-# command fetches and builds the dependencies.
+# Use a stable shared install root inside test containers. CI installs the
+# Nix-built archive here before invoking tests or examples.
 ENV ANNEAL_TOOLCHAIN_DIR=/opt/anneal_toolchain
-RUN cargo run && \
-    chmod -R u+w /opt/anneal_toolchain && \
-    LEAN_DIR=$(find /opt/anneal_toolchain/.anneal/toolchain/ -type d -path "*/backends/lean" | head -n 1) && \
-    cd $LEAN_DIR && \
-    lake exe graph /workspace/imports.dot --to Aeneas,Aeneas.Std.Core,Aeneas.Std.WP,Aeneas.Tactic.Solver.ScalarTac,Aeneas.Std.Scalar.Core --include-deps && \
-    python3 /workspace/tools/prune_mathlib.py /workspace/imports.dot ../../packages/mathlib && \
-    chmod -R a-w /opt/anneal_toolchain
 
 # Ensure the integration target directory exists.
 RUN mkdir -p /cache/anneal_target

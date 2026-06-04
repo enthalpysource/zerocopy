@@ -68,7 +68,11 @@ pub struct Args {
 }
 
 #[derive(Parser, Debug)]
-pub struct SetupArgs {}
+pub struct SetupArgs {
+    /// Install dependencies from a locally built exocrate archive.
+    #[arg(long, value_name = "path-to-local-archive")]
+    pub local_archive: Option<PathBuf>,
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]
