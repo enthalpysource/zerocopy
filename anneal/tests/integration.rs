@@ -1,16 +1,12 @@
 use std::{
-    cmp, fs, io,
+    fs, io,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    process::Command,
     sync::OnceLock,
-    thread,
-    time::Duration,
 };
 
-use fs2::FileExt;
+use fs2::FileExt as _;
 use serde::Deserialize;
-use sha2::Digest;
 use walkdir::WalkDir;
 
 fn new_sorted_walkdir(path: impl AsRef<Path>) -> WalkDir {
@@ -118,7 +114,8 @@ struct CommandExpectation {
 }
 
 static TARGET_DIR: OnceLock<PathBuf> = OnceLock::new();
-static TOOLCHAIN_PATH: OnceLock<PathBuf> = OnceLock::new();
+static TOOLCHAIN_BASE_DIR: OnceLock<PathBuf> = OnceLock::new();
+static TOOLCHAIN_INSTALL_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 fn get_target_dir() -> PathBuf {
     TARGET_DIR
@@ -133,35 +130,78 @@ fn get_target_dir() -> PathBuf {
         .clone()
 }
 
-fn get_toolchain_path() -> PathBuf {
-    TOOLCHAIN_PATH
+fn get_toolchain_base_dir() -> PathBuf {
+    TOOLCHAIN_BASE_DIR
         .get_or_init(|| {
-            let cargo_bin = env!("CARGO_BIN_EXE_cargo-anneal");
-            let output = Command::new(cargo_bin)
-                .arg("toolchain-path")
-                .output()
-                .expect("Failed to execute cargo-anneal toolchain-path");
-
-            if !output.status.success() {
-                panic!(
-                    "cargo-anneal toolchain-path failed: {:?}",
-                    String::from_utf8_lossy(&output.stderr)
-                );
-            }
-
-            let path_str = String::from_utf8(output.stdout).unwrap();
-            let toolchain_path = PathBuf::from(path_str.trim());
-
-            if !toolchain_path.exists() {
-                panic!(
-                    "Resolved toolchain path does not exist: {:?}. Please run `cargo run setup` first.",
-                    toolchain_path
-                );
-            }
-
-            toolchain_path
+            std::env::var_os("ANNEAL_TOOLCHAIN_DIR").map(PathBuf::from).expect(
+                "Anneal integration tests require ANNEAL_TOOLCHAIN_DIR to point at a \
+                     directory where `cargo run setup --local-archive ...` has already run.",
+            )
         })
         .clone()
+}
+
+fn get_toolchain_install_dir() -> PathBuf {
+    TOOLCHAIN_INSTALL_DIR
+        .get_or_init(|| {
+            let dir = get_toolchain_base_dir()
+                .join(".anneal")
+                .join("toolchain")
+                .join(env!("ANNEAL_EXOCRATE_VERSION_SLUG"));
+            if !dir.exists() {
+                panic!(
+                    "Anneal toolchain is not installed at {}. Run `cargo run setup \
+                     --local-archive ...` once before running integration tests.",
+                    dir.display()
+                );
+            }
+
+            for path in [
+                dir.join("aeneas/bin/charon"),
+                dir.join("aeneas/bin/aeneas"),
+                dir.join("lean/bin/lake"),
+            ] {
+                if !path.exists() {
+                    panic!(
+                        "Anneal toolchain installation is missing {}. Re-run `cargo run setup \
+                         --local-archive ...` before running integration tests.",
+                        path.display()
+                    );
+                }
+            }
+
+            dir
+        })
+        .clone()
+}
+
+fn get_toolchain_bin_dir() -> PathBuf {
+    get_toolchain_install_dir().join("aeneas").join("bin")
+}
+
+fn with_integration_slot<T>(f: impl FnOnce() -> T) -> T {
+    const INTEGRATION_JOBS: usize = 4;
+
+    let target_dir = get_target_dir();
+    fs::create_dir_all(&target_dir).expect("failed to create integration target directory");
+    let _lock = 'acquire: loop {
+        for slot in 0..INTEGRATION_JOBS {
+            let lock_path = target_dir.join(format!("anneal-integration-{slot}.lock"));
+            let lock =
+                fs::OpenOptions::new().create(true).write(true).open(&lock_path).unwrap_or_else(
+                    |e| panic!("failed to open integration lock {}: {e}", lock_path.display()),
+                );
+            match lock.try_lock_exclusive() {
+                Ok(()) => break 'acquire lock,
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+                Err(e) => panic!("failed to lock {}: {e}", lock_path.display()),
+            }
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    };
+
+    f()
 }
 
 fn check_source_freshness(source_dir: &Path) -> Result<(), anyhow::Error> {
@@ -238,7 +278,6 @@ struct TestContext {
     test_name: String,
     sandbox_root: PathBuf,
     _temp_dir: Option<tempfile::TempDir>, // Kept alive to prevent deletion
-    test_config: TestConfig,
     home_dir: PathBuf,
 }
 
@@ -251,7 +290,6 @@ impl TestContext {
 
         let target_dir = get_target_dir();
         fs::create_dir_all(&target_dir)?;
-        let toolchain_path = get_toolchain_path();
         let temp = tempfile::Builder::new().prefix("anneal-test-").tempdir_in(&target_dir)?;
 
         let sandbox_root = temp.path().join(&test_name);
@@ -289,14 +327,7 @@ impl TestContext {
             }
         }
 
-        Ok(Self {
-            test_case_root,
-            test_name,
-            sandbox_root,
-            _temp_dir: temp_dir_to_store,
-            test_config: config.clone(),
-            home_dir,
-        })
+        Ok(Self { test_case_root, test_name, sandbox_root, _temp_dir: temp_dir_to_store, home_dir })
     }
 
     fn create_shim(
@@ -365,7 +396,8 @@ echo "---END-INVOCATION---" >> "{}"
         cmd.env_clear();
 
         // After clearing the environment to prevent scope leakage, we must
-        // manually forward essential host variables required for toolchains.
+        // manually forward essential host variables required by Cargo and the
+        // host toolchain.
         for var in [
             "RUSTUP_HOME",
             "CARGO_HOME",
@@ -377,13 +409,13 @@ echo "---END-INVOCATION---" >> "{}"
             "TEMP",
             "USER",
             "USERNAME",
-            "ANNEAL_TOOLCHAIN_DIR",
         ] {
             if let Some(val) = std::env::var_os(var) {
                 cmd.env(var, val);
             }
         }
 
+        cmd.env("ANNEAL_TOOLCHAIN_DIR", get_toolchain_base_dir());
         cmd.env("HOME", &self.home_dir);
 
         if let Ok(elan_home) = std::env::var("ELAN_HOME") {
@@ -447,28 +479,40 @@ echo "---END-INVOCATION---" >> "{}"
 
         // Create shims for Charon and Aeneas.
         //
-        // Even if we are using the "real" binary, we wrap it in a shim to
-        // capture the arguments passed to it. This allows us to assert that
-        // Anneal calls the tools with the expected arguments.
+        // Most integration tests run against the already-installed toolchain
+        // directly. Only tests that explicitly request mocks or command
+        // assertions use PATH shims.
+        let use_tool_shims = config.mock.is_some() || !config.command.is_empty();
+        let original_path = std::env::var_os("PATH").unwrap_or_default();
+        if use_tool_shims {
+            let toolchain_bin_dir = get_toolchain_bin_dir();
+            let shim_dir = self.sandbox_root.join("bin_shim");
+            fs::create_dir_all(&shim_dir).unwrap();
 
-        let toolchain_path = get_toolchain_path();
-        let real_charon = toolchain_path.join("charon");
-        let shim_dir = self.create_shim("charon", &real_charon, charon_mock_mode).unwrap();
+            if charon_mock_mode.is_some() || !config.command.is_empty() {
+                let real_charon = toolchain_bin_dir.join("charon");
+                self.create_shim("charon", &real_charon, charon_mock_mode).unwrap();
+            }
+            if aeneas_mock_mode.is_some() {
+                let real_aeneas = toolchain_bin_dir.join("aeneas");
+                self.create_shim("aeneas", &real_aeneas, aeneas_mock_mode).unwrap();
+            }
 
-        let real_aeneas = toolchain_path.join("aeneas");
-        self.create_shim("aeneas", &real_aeneas, aeneas_mock_mode).unwrap();
+            let new_path = std::env::join_paths(
+                std::iter::once(shim_dir)
+                    .chain(std::iter::once(toolchain_bin_dir))
+                    .chain(std::env::split_paths(&original_path)),
+            )
+            .unwrap();
+            cmd.env("PATH", new_path);
+            cmd.env("ANNEAL_USE_PATH_FOR_TOOLS", "1");
+        } else {
+            cmd.env("PATH", original_path);
+        }
 
         cmd.env("ANNEAL_FORCE_TTY", "1");
         cmd.env("FORCE_COLOR", "1");
-
-        cmd.env("ANNEAL_USE_PATH_FOR_TOOLS", "1");
         cmd.env("RAYON_NUM_THREADS", "1");
-
-        let original_path = std::env::var_os("PATH").unwrap_or_default();
-        let new_path = std::env::join_paths(
-            std::iter::once(shim_dir).chain(std::env::split_paths(&original_path)),
-        )
-        .unwrap();
 
         // Ensure deterministic LLBC generation within the integration test
         // sandbox by rebasing the `workspace_root` off the absolute filesystem
@@ -476,14 +520,10 @@ echo "---END-INVOCATION---" >> "{}"
         let rustflags = format!("--remap-path-prefix={}=/dummy", self.test_case_root.display());
 
         cmd.env("CARGO_TARGET_DIR", self.sandbox_root.join("target"));
-        cmd.env("PATH", new_path);
         cmd.env("RUSTFLAGS", rustflags);
 
-        // Redirect HOME to the persistent home directory within the sandbox.
-        // This ensures that the toolchain is looked up and potentially
-        // repaired/reinstalled in a location that is isolated from the
-        // user's actual home directory but remains persistent across
-        // multiple `anneal` invocations within this single test context.
+        // Redirect HOME to a persistent directory within the sandbox so
+        // user-local Cargo or tool output cannot leak across fixtures.
         cmd.env("HOME", &self.home_dir)
             .env("ANNEAL_TEST_DIR_NAME", "anneal_test_target")
             .env("ANNEAL_HASH_WITH_REMOVED_PREFIX", &self.sandbox_root);
@@ -512,6 +552,10 @@ echo "---END-INVOCATION---" >> "{}"
 }
 
 fn run_integration_test(path: &Path) -> datatest_stable::Result<()> {
+    with_integration_slot(|| run_integration_test_locked(path))
+}
+
+fn run_integration_test_locked(path: &Path) -> datatest_stable::Result<()> {
     let path_str = path.to_string_lossy();
 
     let anneal_toml_content = fs::read_to_string(path)
@@ -534,11 +578,6 @@ fn run_integration_test(path: &Path) -> datatest_stable::Result<()> {
     // if path_str.contains("atomic_writes/anneal.toml") {
     //     return run_atomic_writes_test(path);
     // }
-    // Special handling for the "toolchain_versioning" test case.
-    if path_str.contains("toolchain_versioning/anneal.toml") {
-        return run_toolchain_versioning_test(path);
-    }
-
     // Load the test configuration from the associated 'anneal.toml' manifest.
     let config = anneal_toml.test.unwrap_or_default();
 
@@ -705,149 +744,6 @@ fn run_single_phase(
                 fs::remove_dir_all(&lake_dir).expect("Failed to delete .lake directory");
             }
             return Ok(());
-        } else if action.starts_with("delete_toolchain_file ") {
-            let file_name = action.strip_prefix("delete_toolchain_file ").unwrap();
-            let toolchain_root = ctx.home_dir.join(".anneal/toolchain");
-
-            // The toolchain directory name includes a short hash of the version,
-            // which changes whenever the managed dependencies are updated. To
-            // remain robust across version changes, we scan for any directory
-            // existing within the toolchain root.
-            let build_dir = fs::read_dir(&toolchain_root)?
-                .filter_map(|e| e.ok())
-                .find(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::NotFound, "Toolchain build directory not found")
-                })?
-                .path();
-            let target_file = build_dir.join(file_name);
-            if target_file.exists() {
-                fs::remove_file(&target_file).expect("Failed to delete toolchain file");
-            }
-            return Ok(());
-        } else if action.starts_with("corrupt_toolchain_file ") {
-            let file_name = action.strip_prefix("corrupt_toolchain_file ").unwrap();
-            let toolchain_root = ctx.home_dir.join(".anneal/toolchain");
-
-            // Scan for the hash-prefixed toolchain directory.
-            let build_dir = fs::read_dir(&toolchain_root)?
-                .filter_map(|e| e.ok())
-                .find(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::NotFound, "Toolchain build directory not found")
-                })?
-                .path();
-            let target_file = build_dir.join(file_name);
-            if target_file.exists() {
-                // We corrupt the file with a known string that our assertions can
-                // identify later.
-                fs::write(&target_file, "CORRUPTED CONTENT")
-                    .expect("Failed to corrupt toolchain file");
-            }
-            return Ok(());
-        } else if action.starts_with("assert_toolchain_binary ") {
-            let rest = action.strip_prefix("assert_toolchain_binary ").unwrap();
-            let mut parts = rest.split_whitespace();
-            let file_name = parts
-                .next()
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Missing file name"))?;
-            let expected_hash = parts.next();
-
-            let toolchain_root = ctx.home_dir.join(".anneal/toolchain");
-            if !toolchain_root.exists() {
-                let home_exists = ctx.home_dir.exists();
-                let mut entries = Vec::new();
-                if home_exists && let Ok(rd) = fs::read_dir(&ctx.home_dir) {
-                    for e in rd.filter_map(|e| e.ok()) {
-                        entries.push(e.file_name().to_string_lossy().to_string());
-                    }
-                }
-                panic!(
-                    "Toolchain root missing at {:?}! home exists: {}, home contents: {:?}",
-                    toolchain_root, home_exists, entries
-                );
-            }
-            // Scan for the hash-prefixed toolchain directory.
-            let build_dir = fs::read_dir(&toolchain_root)?
-                .filter_map(|e| e.ok())
-                .find(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::NotFound, "Toolchain build directory not found")
-                })?
-                .path();
-            let target_file = build_dir.join(file_name);
-
-            match expected_hash {
-                Some("missing") => {
-                    // Assert that the file has been successfully deleted/removed.
-                    if target_file.exists() {
-                        panic!(
-                            "Expected toolchain file '{}' to be missing, but it exists",
-                            file_name
-                        );
-                    }
-                }
-                Some("corrupted") => {
-                    // Assert that the file exists and contains the "CORRUPTED
-                    // CONTENT" string written by a previous
-                    // `corrupt_toolchain_file` action.
-                    if !target_file.exists() {
-                        panic!(
-                            "Expected toolchain file '{}' to exist (corrupted), but it doesn't",
-                            file_name
-                        );
-                    }
-                    let content =
-                        fs::read_to_string(&target_file).expect("Failed to read toolchain file");
-                    if content != "CORRUPTED CONTENT" {
-                        panic!(
-                            "Expected toolchain file '{}' to be corrupted with 'CORRUPTED CONTENT', but it has different content",
-                            file_name
-                        );
-                    }
-                }
-                Some(expected_hash) => {
-                    // Normal hash verification mode.
-                    if !target_file.exists() {
-                        panic!("Expected toolchain file '{}' to exist, but it doesn't", file_name);
-                    }
-                    let mut file = fs::File::open(&target_file)?;
-                    let mut hasher = sha2::Sha256::new();
-                    std::io::copy(&mut file, &mut hasher)?;
-                    let actual_hash = format!("{:x}", hasher.finalize());
-
-                    if actual_hash != expected_hash {
-                        panic!(
-                            "Hash mismatch for toolchain file '{}'.\nExpected: {}\nActual:   {}",
-                            file_name, expected_hash, actual_hash
-                        );
-                    }
-                }
-                None => {
-                    // If no hash is specified, just assert existence.
-                    if !target_file.exists() {
-                        panic!("Expected toolchain file '{}' to exist, but it doesn't", file_name);
-                    }
-                }
-            }
-            return Ok(());
-        } else if action.starts_with("assert_toolchain_file_missing ") {
-            let file_name = action.strip_prefix("assert_toolchain_file_missing ").unwrap();
-            let toolchain_root = ctx.home_dir.join(".anneal/toolchain");
-            if let Ok(entries) = fs::read_dir(&toolchain_root) {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                        let target_file = entry.path().join(file_name);
-                        if target_file.exists() {
-                            panic!(
-                                "Expected toolchain file '{}' to be missing, but it exists",
-                                file_name
-                            );
-                        }
-                    }
-                }
-            }
-            return Ok(());
         } else {
             panic!("Unknown action: {}", action);
         }
@@ -943,22 +839,28 @@ fn assert_output_file(
     let replace_path = sandbox_root.to_str().unwrap();
 
     let target_dir = get_target_dir();
-    let toolchain_path = get_toolchain_path();
     let target_path_str = target_dir.to_str().unwrap();
-    let toolchain_path_str = toolchain_path.to_str().unwrap();
+    let toolchain_base = get_toolchain_base_dir();
+    let toolchain_base_str = toolchain_base.to_str().unwrap();
+    let toolchain_install_dir = get_toolchain_install_dir();
+    let toolchain_install_dir_str = toolchain_install_dir.to_str().unwrap();
+    let toolchain_bin_dir = get_toolchain_bin_dir();
+    let toolchain_bin_dir_str = toolchain_bin_dir.to_str().unwrap();
     let home_path_str = home_dir.to_str().unwrap();
     // Replace volatile environment-specific paths with static placeholders.
     //
     // - `replace_path` corresponds to the sandbox root, which varies per
     //   test run.
-    // - `toolchain_path_str` corresponds to the global toolchain.
+    // - `toolchain_*` paths correspond to the shared pre-installed toolchain.
     // - `target_path_str` corresponds to the cargo target directory or override.
     // - `home_path_str` corresponds to the user's home directory (redirected in
     //   tests).
     let actual_clean = sanitize_output(
         &actual_str
             .replace(replace_path, "[PROJECT_ROOT]")
-            .replace(toolchain_path_str, "[CACHE_ROOT]")
+            .replace(toolchain_bin_dir_str, "[CACHE_ROOT]")
+            .replace(toolchain_install_dir_str, "[CACHE_ROOT]")
+            .replace(toolchain_base_str, "[CACHE_ROOT]")
             .replace(home_path_str, "[HOME]")
             .replace(target_path_str, "[TARGET_DIR]"),
     );
@@ -1003,70 +905,6 @@ fn parse_command_log(content: &str) -> Vec<Vec<String>> {
         }
     }
     invocations
-}
-
-/// Verifies that the generating `lakefile.lean` and `lean-toolchain` files
-/// contain the correct Aeneas commit hash and Lean toolchain version,
-/// matching the values specified in `Cargo.toml`.
-fn run_toolchain_versioning_test(path: &Path) -> datatest_stable::Result<()> {
-    let config = TestConfig {
-        args: Some(vec!["verify".into(), "--allow-sorry".into()]),
-        ..Default::default()
-    };
-
-    // 1. Setup TestContext
-    let ctx = TestContext::new(path, &config)?;
-
-    // 3. Run
-    let assert = ctx.run_anneal(&config);
-    assert.success();
-
-    // 4. Verify generated lakefile.lean and lean-toolchain
-    let target_dir = ctx.sandbox_root.join("target");
-
-    // Parse `Cargo.toml` to get the expected values. We expect the tests to be
-    // running in the workspace root, so we can find `Cargo.toml` there.
-    let cargo_toml_path =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("Cargo.toml");
-    let cargo_toml_content = fs::read_to_string(&cargo_toml_path)?;
-    let cargo_toml: toml::Value = toml::from_str(&cargo_toml_content)?;
-    let metadata = cargo_toml
-        .get("package")
-        .and_then(|p| p.get("metadata"))
-        .and_then(|m| m.get("build_rs"))
-        .expect("Cargo.toml must have [package.metadata.build_rs]");
-
-    let expected_rev = metadata.get("aeneas_rev").and_then(|v| v.as_str()).unwrap();
-    let expected_toolchain = metadata.get("lean_toolchain").and_then(|v| v.as_str()).unwrap();
-
-    // Check `lakefile.lean` for the Aeneas revision. Even if using a local
-    // Aeneas path (which the test likely is), we expect the revision to be
-    // present in a comment.
-    let lean_dir = target_dir.join("anneal/anneal_test_target/lean");
-
-    let lakefile_path = lean_dir.join("lakefile.lean");
-    let lakefile_content = fs::read_to_string(&lakefile_path)?;
-
-    if !lakefile_content.contains(expected_rev) {
-        panic!(
-            "lakefile.lean does not contain expected aeneas_rev '{}'. Content:\n{}",
-            expected_rev, lakefile_content
-        );
-    }
-
-    // Check `lean-toolchain` for the correct Lean version.
-    let toolchain_path = lean_dir.join("lean-toolchain");
-    let toolchain_content = fs::read_to_string(&toolchain_path)?;
-
-    // toolchain content usually has a newline
-    if !toolchain_content.trim().contains(expected_toolchain) {
-        panic!(
-            "lean-toolchain does not contain expected toolchain '{}'. Content:\n{}",
-            expected_toolchain, toolchain_content
-        );
-    }
-
-    Ok(())
 }
 
 fn assert_commands_match(invocations: &[Vec<String>], expectations: &[CommandExpectation]) {
@@ -1469,7 +1307,7 @@ fn sanitize_output(output: &str) -> String {
     clean = re_aeneas_time.replace_all(&clean, "Total execution time: <TIME> seconds").into_owned();
     clean = re_unpacked_time.replace_all(&clean, "Unpacked in <TIME> ms").into_owned();
     clean = re_lean_full_install
-        .replace_all(&clean, "Lean toolchain leanprover/lean4:v4.28.0-rc1 is already installed.\n")
+        .replace_all(&clean, "Lean toolchain leanprover/lean4:v4.30.0-rc2 is already installed.\n")
         .into_owned();
     clean = re_ip_port.replace_all(&clean, "127.0.0.1:<PORT>").into_owned();
     clean = re_rustup.replace_all(&clean, "[RUSTUP_TOOLCHAIN]").into_owned();
