@@ -87,16 +87,20 @@ fn main() -> anyhow::Result<()> {
                 println!();
                 println!("To manually build and experiment:");
                 println!("  1. cd {}", lean_root.display());
-                println!("  2. LAKE_CACHE_DIR={} lake build", toolchain.cache_dir().display());
+                println!(
+                    "  2. LAKE_CACHE_DIR={} {} --keep-toolchain build",
+                    toolchain.cache_dir().display(),
+                    toolchain.lean_bin().join("lake").display()
+                );
                 Ok(())
             })?;
         }
-        Commands::Setup(resolve::SetupArgs {}) => {
-            setup::run_setup()?;
+        Commands::Setup(args) => {
+            setup::run_setup(setup::SetupArgs { local_archive: args.local_archive })?;
         }
         Commands::ToolchainPath => {
             let toolchain = setup::Toolchain::resolve()?;
-            println!("{}", toolchain.root.display());
+            println!("{}", toolchain.bin_dir().display());
         }
         Commands::Expand(expand_args) => {
             prepare_and_run(&expand_args.resolve_args, |locked_roots, packages| {
