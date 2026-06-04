@@ -89,7 +89,7 @@ need sha256sum
 need tar
 need zstd
 need strings
-need date
+need python3
 need nix
 
 if [[ -z "$work_dir" ]]; then
@@ -158,10 +158,14 @@ if [[ -z "$commit_date" ]]; then
   exit 1
 fi
 
-# FIXME: This requires GNU date. macOS targets above are valid release targets,
-# but the host script itself will fail on BSD date until this date arithmetic is
-# made portable.
-rust_date=$(date -d "$commit_date + 1 day" +%Y-%m-%d)
+rust_date=$(
+  python3 - "$commit_date" <<'PY'
+import datetime
+import sys
+
+print((datetime.date.fromisoformat(sys.argv[1]) + datetime.timedelta(days=1)).isoformat())
+PY
+)
 
 lean_dir="$work_dir/lean-toolchain"
 mkdir -p "$lean_dir"

@@ -1,16 +1,18 @@
 use std::{
-    cmp, fs, io,
+    fs, io,
+    io::Write as _,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    process::Command,
-    sync::OnceLock,
+    process::{self, Stdio},
+    sync::{Arc, Condvar, Mutex, OnceLock},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
-use fs2::FileExt;
+use assert_cmd::assert::Assert;
+use fs2::FileExt as _;
 use serde::Deserialize;
-use sha2::Digest;
+use serde_json::json;
 use walkdir::WalkDir;
 
 fn new_sorted_walkdir(path: impl AsRef<Path>) -> WalkDir {
@@ -39,7 +41,7 @@ enum ExpectedStatus {
 
 // A note on our "no implicit files" philosophy: We prefer explicit
 // configuration to implicit conventions. Thus, unless explicitly specified in
-// `anneal.toml` (e.g., via `stderr_file` or `matches_expected_directory`), the
+// `anneal.toml` (e.g., via `stderr_file` or `matches_expected_dir`), the
 // test runner will completely ignore all other files in
 // `tests/fixtures/<test_case>`. It will not implicitly search for "implicit
 // files" (like `expected.stderr`) if they are not named in the TOML
@@ -62,9 +64,6 @@ struct TestConfig {
     #[serde(default)]
     command: Vec<CommandExpectation>,
     mock: Option<MockConfig>,
-
-    #[serde(default)]
-    env: std::collections::HashMap<String, String>,
     #[serde(default)]
     phases: Vec<TestPhase>,
 }
@@ -104,8 +103,6 @@ struct ArtifactExpectation {
     #[serde(default)]
     content_contains: Vec<String>,
     #[serde(default)]
-    content_lacks: Vec<String>,
-    #[serde(default)]
     matches_expected_dir: Option<String>,
 }
 
@@ -113,12 +110,127 @@ struct ArtifactExpectation {
 #[serde(deny_unknown_fields)]
 struct CommandExpectation {
     args: Vec<String>,
-    #[serde(default)]
-    should_not_exist: bool,
 }
 
 static TARGET_DIR: OnceLock<PathBuf> = OnceLock::new();
-static TOOLCHAIN_PATH: OnceLock<PathBuf> = OnceLock::new();
+static TOOLCHAIN_BASE_DIR: OnceLock<PathBuf> = OnceLock::new();
+static TOOLCHAIN_INSTALL_DIR: OnceLock<PathBuf> = OnceLock::new();
+static TOOLCHAIN_RUN_JOBS: OnceLock<usize> = OnceLock::new();
+static PROFILE_LOG: OnceLock<Option<ProfileLog>> = OnceLock::new();
+static PROFILE_SAMPLE_MS: OnceLock<u64> = OnceLock::new();
+static PROFILE_EMIT_SAMPLES: OnceLock<bool> = OnceLock::new();
+
+struct ProfileLog {
+    file: Mutex<fs::File>,
+    start: Instant,
+}
+
+struct ProfileScope {
+    test: String,
+    phase: Option<String>,
+    name: &'static str,
+    start: Instant,
+}
+
+impl ProfileScope {
+    fn new(test: &str, phase: Option<&str>, name: &'static str) -> Self {
+        Self {
+            test: test.to_string(),
+            phase: phase.map(str::to_string),
+            name,
+            start: Instant::now(),
+        }
+    }
+}
+
+impl Drop for ProfileScope {
+    fn drop(&mut self) {
+        emit_profile_event(json!({
+            "event": "duration",
+            "test": self.test,
+            "phase": self.phase,
+            "name": self.name,
+            "start_ms": profile_elapsed_ms(self.start),
+            "duration_ms": self.start.elapsed().as_millis(),
+        }));
+    }
+}
+
+#[derive(Clone, Default)]
+struct ProcessMetrics {
+    samples: usize,
+    max_processes: usize,
+    max_threads: u64,
+    max_open_fds: u64,
+    max_rss_kb: u64,
+    max_read_bytes: u64,
+    max_write_bytes: u64,
+}
+
+struct CommandRun {
+    assert: Assert,
+}
+
+fn profile_step<T>(
+    test: &str,
+    phase: Option<&str>,
+    name: &'static str,
+    f: impl FnOnce() -> T,
+) -> T {
+    let _scope = ProfileScope::new(test, phase, name);
+    f()
+}
+
+fn profile_log() -> Option<&'static ProfileLog> {
+    PROFILE_LOG
+        .get_or_init(|| {
+            let path = std::env::var_os("ANNEAL_INTEGRATION_PROFILE")?;
+            let path = PathBuf::from(path);
+            if let Some(parent) = path.parent()
+                && !parent.as_os_str().is_empty()
+            {
+                fs::create_dir_all(parent).unwrap_or_else(|e| {
+                    panic!("failed to create profile directory {}: {e}", parent.display())
+                });
+            }
+
+            let file =
+                fs::OpenOptions::new().create(true).append(true).open(&path).unwrap_or_else(|e| {
+                    panic!("failed to open profile log {}: {e}", path.display())
+                });
+            Some(ProfileLog { file: Mutex::new(file), start: Instant::now() })
+        })
+        .as_ref()
+}
+
+fn profile_elapsed_ms(instant: Instant) -> u128 {
+    profile_log().map(|log| instant.saturating_duration_since(log.start).as_millis()).unwrap_or(0)
+}
+
+fn emit_profile_event(mut event: serde_json::Value) {
+    let Some(log) = profile_log() else { return };
+    if let Some(obj) = event.as_object_mut() {
+        obj.insert("pid".to_string(), json!(process::id()));
+        obj.insert("thread".to_string(), json!(format!("{:?}", thread::current().id())));
+    }
+    let mut file = log.file.lock().expect("profile log mutex poisoned");
+    writeln!(file, "{event}").expect("failed to write profile event");
+}
+
+fn profile_sample_ms() -> u64 {
+    *PROFILE_SAMPLE_MS.get_or_init(|| {
+        std::env::var("ANNEAL_INTEGRATION_PROFILE_SAMPLE_MS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(500)
+    })
+}
+
+fn profile_emit_samples() -> bool {
+    *PROFILE_EMIT_SAMPLES.get_or_init(|| {
+        std::env::var("ANNEAL_INTEGRATION_PROFILE_EMIT_SAMPLES").as_deref() == Ok("1")
+    })
+}
 
 fn get_target_dir() -> PathBuf {
     TARGET_DIR
@@ -133,35 +245,346 @@ fn get_target_dir() -> PathBuf {
         .clone()
 }
 
-fn get_toolchain_path() -> PathBuf {
-    TOOLCHAIN_PATH
+fn get_toolchain_base_dir() -> PathBuf {
+    TOOLCHAIN_BASE_DIR
         .get_or_init(|| {
-            let cargo_bin = env!("CARGO_BIN_EXE_cargo-anneal");
-            let output = Command::new(cargo_bin)
-                .arg("toolchain-path")
-                .output()
-                .expect("Failed to execute cargo-anneal toolchain-path");
-
-            if !output.status.success() {
-                panic!(
-                    "cargo-anneal toolchain-path failed: {:?}",
-                    String::from_utf8_lossy(&output.stderr)
-                );
-            }
-
-            let path_str = String::from_utf8(output.stdout).unwrap();
-            let toolchain_path = PathBuf::from(path_str.trim());
-
-            if !toolchain_path.exists() {
-                panic!(
-                    "Resolved toolchain path does not exist: {:?}. Please run `cargo run setup` first.",
-                    toolchain_path
-                );
-            }
-
-            toolchain_path
+            std::env::var_os("ANNEAL_TOOLCHAIN_DIR").map(PathBuf::from).expect(
+                "Anneal integration tests require ANNEAL_TOOLCHAIN_DIR to point at a \
+                     directory where `cargo run setup --local-archive ...` has already run.",
+            )
         })
         .clone()
+}
+
+fn get_toolchain_install_dir() -> PathBuf {
+    TOOLCHAIN_INSTALL_DIR
+        .get_or_init(|| {
+            let dir = get_toolchain_base_dir()
+                .join(".anneal")
+                .join("toolchain")
+                .join(env!("ANNEAL_EXOCRATE_VERSION_SLUG"));
+            if !dir.exists() {
+                panic!(
+                    "Anneal toolchain is not installed at {}. Run `cargo run setup \
+                     --local-archive ...` once before running integration tests.",
+                    dir.display()
+                );
+            }
+
+            for path in [
+                dir.join("aeneas/bin/charon"),
+                dir.join("aeneas/bin/aeneas"),
+                dir.join("lean/bin/lake"),
+            ] {
+                if !path.exists() {
+                    panic!(
+                        "Anneal toolchain installation is missing {}. Re-run `cargo run setup \
+                         --local-archive ...` before running integration tests.",
+                        path.display()
+                    );
+                }
+            }
+
+            dir
+        })
+        .clone()
+}
+
+fn get_toolchain_bin_dir() -> PathBuf {
+    get_toolchain_install_dir().join("aeneas").join("bin")
+}
+
+fn toolchain_run_jobs() -> usize {
+    *TOOLCHAIN_RUN_JOBS.get_or_init(|| {
+        std::env::var("ANNEAL_INTEGRATION_REAL_JOBS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .filter(|jobs| *jobs > 0)
+            .unwrap_or(1)
+    })
+}
+
+struct ToolchainRunPermit {
+    _lock: fs::File,
+    slot: usize,
+    jobs: usize,
+    wait: Duration,
+    acquired_at: Instant,
+}
+
+impl ToolchainRunPermit {
+    fn hold_duration(&self) -> Duration {
+        self.acquired_at.elapsed()
+    }
+}
+
+fn acquire_toolchain_run_slot() -> ToolchainRunPermit {
+    let started = Instant::now();
+    let jobs = toolchain_run_jobs();
+    let target_dir = get_target_dir();
+    fs::create_dir_all(&target_dir).expect("failed to create integration target directory");
+
+    loop {
+        for slot in 0..jobs {
+            let lock_path = target_dir.join(format!("anneal-toolchain-run-{slot}.lock"));
+            let lock =
+                fs::OpenOptions::new().create(true).write(true).open(&lock_path).unwrap_or_else(
+                    |e| panic!("failed to open integration lock {}: {e}", lock_path.display()),
+                );
+            match lock.try_lock_exclusive() {
+                Ok(()) => {
+                    return ToolchainRunPermit {
+                        _lock: lock,
+                        slot,
+                        jobs,
+                        wait: started.elapsed(),
+                        acquired_at: Instant::now(),
+                    };
+                }
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+                Err(e) => panic!("failed to lock {}: {e}", lock_path.display()),
+            }
+        }
+
+        thread::sleep(Duration::from_millis(25));
+    }
+}
+
+fn run_command_with_profile(
+    test: &str,
+    phase: Option<&str>,
+    mut cmd: process::Command,
+) -> io::Result<CommandRun> {
+    let argv: Vec<_> = std::iter::once(cmd.get_program().to_string_lossy().to_string())
+        .chain(cmd.get_args().map(|arg| arg.to_string_lossy().to_string()))
+        .collect();
+    let cwd = cmd.get_current_dir().map(|dir| dir.display().to_string());
+    let started = Instant::now();
+
+    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let child = cmd.spawn()?;
+    let child_pid = child.id();
+    let sampler = ProcessSampler::start(test, phase, child_pid);
+    let output = child.wait_with_output()?;
+    let metrics = sampler.map(ProcessSampler::finish);
+
+    let metrics_json = metrics.as_ref().map(|metrics| {
+        json!({
+            "samples": metrics.samples,
+            "max_processes": metrics.max_processes,
+            "max_threads": metrics.max_threads,
+            "max_open_fds": metrics.max_open_fds,
+            "max_rss_kb": metrics.max_rss_kb,
+            "max_read_bytes": metrics.max_read_bytes,
+            "max_write_bytes": metrics.max_write_bytes,
+        })
+    });
+
+    emit_profile_event(json!({
+        "event": "command",
+        "test": test,
+        "phase": phase,
+        "argv": argv,
+        "cwd": cwd,
+        "status_code": output.status.code(),
+        "success": output.status.success(),
+        "start_ms": profile_elapsed_ms(started),
+        "duration_ms": started.elapsed().as_millis(),
+        "stdout_bytes": output.stdout.len(),
+        "stderr_bytes": output.stderr.len(),
+        "process_metrics": metrics_json,
+    }));
+
+    Ok(CommandRun { assert: Assert::new(output) })
+}
+
+struct ProcessSampler {
+    stop: Arc<(Mutex<bool>, Condvar)>,
+    handle: thread::JoinHandle<ProcessMetrics>,
+}
+
+impl ProcessSampler {
+    fn start(test: &str, phase: Option<&str>, root_pid: u32) -> Option<Self> {
+        profile_log()?;
+        let sample_ms = profile_sample_ms();
+        if sample_ms == 0 {
+            return None;
+        }
+
+        let stop = Arc::new((Mutex::new(false), Condvar::new()));
+        let thread_stop = Arc::clone(&stop);
+        let test = test.to_string();
+        let phase = phase.map(str::to_string);
+        let handle = thread::spawn(move || {
+            let started = Instant::now();
+            let mut metrics = ProcessMetrics::default();
+            loop {
+                if *thread_stop.0.lock().expect("process sampler mutex poisoned") {
+                    break;
+                }
+
+                if let Some(sample) = collect_process_sample(root_pid) {
+                    metrics.samples += 1;
+                    metrics.max_processes = metrics.max_processes.max(sample.processes);
+                    metrics.max_threads = metrics.max_threads.max(sample.threads);
+                    metrics.max_open_fds = metrics.max_open_fds.max(sample.open_fds);
+                    metrics.max_rss_kb = metrics.max_rss_kb.max(sample.rss_kb);
+                    metrics.max_read_bytes = metrics.max_read_bytes.max(sample.read_bytes);
+                    metrics.max_write_bytes = metrics.max_write_bytes.max(sample.write_bytes);
+
+                    if profile_emit_samples() {
+                        emit_profile_event(json!({
+                            "event": "process_sample",
+                            "test": test,
+                            "phase": phase,
+                            "root_pid": root_pid,
+                            "sample_elapsed_ms": started.elapsed().as_millis(),
+                            "processes": sample.processes,
+                            "threads": sample.threads,
+                            "open_fds": sample.open_fds,
+                            "rss_kb": sample.rss_kb,
+                            "read_bytes": sample.read_bytes,
+                            "write_bytes": sample.write_bytes,
+                        }));
+                    }
+                }
+
+                let stop = thread_stop.0.lock().expect("process sampler mutex poisoned");
+                let (stop, _) = thread_stop
+                    .1
+                    .wait_timeout_while(stop, Duration::from_millis(sample_ms), |stop| !*stop)
+                    .expect("process sampler condvar poisoned");
+                if *stop {
+                    break;
+                }
+            }
+            metrics
+        });
+
+        Some(Self { stop, handle })
+    }
+
+    fn finish(self) -> ProcessMetrics {
+        *self.stop.0.lock().expect("process sampler mutex poisoned") = true;
+        self.stop.1.notify_one();
+        self.handle.join().expect("process sampler panicked")
+    }
+}
+
+#[derive(Default)]
+struct ProcessSample {
+    processes: usize,
+    threads: u64,
+    open_fds: u64,
+    rss_kb: u64,
+    read_bytes: u64,
+    write_bytes: u64,
+}
+
+#[cfg(target_os = "linux")]
+fn collect_process_sample(root_pid: u32) -> Option<ProcessSample> {
+    let mut parents = std::collections::HashMap::new();
+    for entry in fs::read_dir("/proc").ok()? {
+        let Ok(entry) = entry else { continue };
+        let Some(pid) = entry.file_name().to_str().and_then(|name| name.parse::<u32>().ok()) else {
+            continue;
+        };
+        if let Some(ppid) = read_proc_ppid(pid) {
+            parents.insert(pid, ppid);
+        }
+    }
+
+    if !parents.contains_key(&root_pid) {
+        return None;
+    }
+
+    let mut sample = ProcessSample::default();
+    for &pid in parents.keys() {
+        if !is_descendant(pid, root_pid, &parents) {
+            continue;
+        }
+        sample.processes += 1;
+        if let Some(status) = read_proc_status(pid) {
+            sample.rss_kb += status.rss_kb;
+            sample.threads += status.threads;
+        }
+        sample.open_fds += fs::read_dir(format!("/proc/{pid}/fd"))
+            .map(|entries| entries.count() as u64)
+            .unwrap_or(0);
+        if let Some(io) = read_proc_io(pid) {
+            sample.read_bytes += io.0;
+            sample.write_bytes += io.1;
+        }
+    }
+
+    Some(sample)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn collect_process_sample(_root_pid: u32) -> Option<ProcessSample> {
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn read_proc_ppid(pid: u32) -> Option<u32> {
+    let stat = fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    let (_, fields) = stat.rsplit_once(") ")?;
+    fields.split_whitespace().nth(1)?.parse().ok()
+}
+
+#[cfg(target_os = "linux")]
+fn is_descendant(
+    mut pid: u32,
+    root_pid: u32,
+    parents: &std::collections::HashMap<u32, u32>,
+) -> bool {
+    loop {
+        if pid == root_pid {
+            return true;
+        }
+        let Some(&ppid) = parents.get(&pid) else { return false };
+        if ppid == 0 || ppid == pid {
+            return false;
+        }
+        pid = ppid;
+    }
+}
+
+#[cfg(target_os = "linux")]
+struct ProcStatus {
+    rss_kb: u64,
+    threads: u64,
+}
+
+#[cfg(target_os = "linux")]
+fn read_proc_status(pid: u32) -> Option<ProcStatus> {
+    let status = fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
+    let mut proc_status = ProcStatus { rss_kb: 0, threads: 0 };
+    for line in status.lines() {
+        if let Some(rest) = line.strip_prefix("VmRSS:") {
+            proc_status.rss_kb =
+                rest.split_whitespace().next().and_then(|s| s.parse().ok()).unwrap_or(0);
+        } else if let Some(rest) = line.strip_prefix("Threads:") {
+            proc_status.threads =
+                rest.split_whitespace().next().and_then(|s| s.parse().ok()).unwrap_or(0);
+        }
+    }
+    Some(proc_status)
+}
+
+#[cfg(target_os = "linux")]
+fn read_proc_io(pid: u32) -> Option<(u64, u64)> {
+    let io = fs::read_to_string(format!("/proc/{pid}/io")).ok()?;
+    let mut read_bytes = 0;
+    let mut write_bytes = 0;
+    for line in io.lines() {
+        if let Some(rest) = line.strip_prefix("read_bytes:") {
+            read_bytes = rest.trim().parse().unwrap_or(0);
+        } else if let Some(rest) = line.strip_prefix("write_bytes:") {
+            write_bytes = rest.trim().parse().unwrap_or(0);
+        }
+    }
+    Some((read_bytes, write_bytes))
 }
 
 fn check_source_freshness(source_dir: &Path) -> Result<(), anyhow::Error> {
@@ -238,7 +661,6 @@ struct TestContext {
     test_name: String,
     sandbox_root: PathBuf,
     _temp_dir: Option<tempfile::TempDir>, // Kept alive to prevent deletion
-    test_config: TestConfig,
     home_dir: PathBuf,
 }
 
@@ -247,17 +669,22 @@ impl TestContext {
         let test_case_root = path.parent().unwrap().to_path_buf();
         let test_name = test_case_root.file_name().unwrap().to_string_lossy().to_string();
         let source_dir = test_case_root.join("source");
-        check_source_freshness(&source_dir).map_err(|e| e.to_string())?;
+        profile_step(&test_name, None, "check_source_freshness", || {
+            check_source_freshness(&source_dir).map_err(|e| e.to_string())
+        })?;
 
         let target_dir = get_target_dir();
-        fs::create_dir_all(&target_dir)?;
-        let toolchain_path = get_toolchain_path();
-        let temp = tempfile::Builder::new().prefix("anneal-test-").tempdir_in(&target_dir)?;
+        let temp = profile_step(&test_name, None, "create_sandbox", || {
+            fs::create_dir_all(&target_dir)?;
+            tempfile::Builder::new().prefix("anneal-test-").tempdir_in(&target_dir)
+        })?;
 
         let sandbox_root = temp.path().join(&test_name);
         let home_dir = temp.path().join("home");
-        fs::create_dir_all(&home_dir)?;
-        copy_dir_contents(&source_dir, &sandbox_root)?;
+        profile_step(&test_name, None, "copy_fixture_source", || {
+            fs::create_dir_all(&home_dir)?;
+            copy_dir_contents(&source_dir, &sandbox_root)
+        })?;
 
         // Check if we should keep the test directory for debugging
         let temp_dir_to_store = if std::env::var("ANNEAL_KEEP_TEST_DIR").as_deref() == Ok("1")
@@ -275,28 +702,24 @@ impl TestContext {
         };
 
         // Copy extra inputs based on config.
-        for extra in &config.extra_inputs {
-            let extra_path = test_case_root.join(extra);
-            if extra_path.exists() {
-                let dest = sandbox_root.join(extra);
-                if let Some(parent) = dest.parent() {
-                    // Create parent directories for the destination to support
-                    // copying extra inputs into nested paths within the
-                    // sandbox.
-                    fs::create_dir_all(parent)?;
+        profile_step(&test_name, None, "copy_extra_inputs", || {
+            for extra in &config.extra_inputs {
+                let extra_path = test_case_root.join(extra);
+                if extra_path.exists() {
+                    let dest = sandbox_root.join(extra);
+                    if let Some(parent) = dest.parent() {
+                        // Create parent directories for the destination to support
+                        // copying extra inputs into nested paths within the
+                        // sandbox.
+                        fs::create_dir_all(parent)?;
+                    }
+                    fs::copy(&extra_path, dest)?;
                 }
-                fs::copy(&extra_path, dest)?;
             }
-        }
+            Ok::<_, io::Error>(())
+        })?;
 
-        Ok(Self {
-            test_case_root,
-            test_name,
-            sandbox_root,
-            _temp_dir: temp_dir_to_store,
-            test_config: config.clone(),
-            home_dir,
-        })
+        Ok(Self { test_case_root, test_name, sandbox_root, _temp_dir: temp_dir_to_store, home_dir })
     }
 
     fn create_shim(
@@ -313,15 +736,6 @@ impl TestContext {
 
         let mut shim_content = String::new();
         shim_content.push_str("#!/bin/sh\n");
-
-        // For backward compatibility with legacy tests, we log "AENEAS INVOKED"
-        // for Aeneas. This allows existing tests to verify that Aeneas was
-        // actually called.
-        if binary == "aeneas" {
-            use std::fmt::Write;
-            writeln!(shim_content, "echo \"AENEAS INVOKED\" >> \"{}\"", log_file.display())
-                .unwrap();
-        }
 
         shim_content.push_str(&format!(
             r#"for arg in "$@"; do
@@ -360,42 +774,31 @@ echo "---END-INVOCATION---" >> "{}"
         Ok(shim_dir)
     }
 
-    fn run_anneal(&self, config: &TestConfig) -> assert_cmd::assert::Assert {
-        let mut cmd = assert_cmd::cargo_bin_cmd!("cargo-anneal");
+    fn run_anneal(&self, config: &TestConfig, phase_name: Option<&str>) -> CommandRun {
+        let mut cmd = process::Command::new(assert_cmd::cargo::cargo_bin!("cargo-anneal"));
         cmd.env_clear();
 
         // After clearing the environment to prevent scope leakage, we must
-        // manually forward essential host variables required for toolchains.
+        // manually forward essential host variables required by Cargo and the
+        // host toolchain.
         for var in [
             "RUSTUP_HOME",
             "CARGO_HOME",
             "RUSTUP_TOOLCHAIN",
-            "ELAN_HOME",
             "LD_LIBRARY_PATH",
             "TMPDIR",
             "TMP",
             "TEMP",
             "USER",
             "USERNAME",
-            "ANNEAL_TOOLCHAIN_DIR",
         ] {
             if let Some(val) = std::env::var_os(var) {
                 cmd.env(var, val);
             }
         }
 
+        cmd.env("ANNEAL_TOOLCHAIN_DIR", get_toolchain_base_dir());
         cmd.env("HOME", &self.home_dir);
-
-        if let Ok(elan_home) = std::env::var("ELAN_HOME") {
-            cmd.env("ELAN_HOME", elan_home);
-        } else {
-            let elan_home = if std::env::var("__ZEROCOPY_LOCAL_DEV").is_ok() {
-                get_target_dir().join("anneal-home/.elan")
-            } else {
-                PathBuf::from(std::env::var("HOME").unwrap()).join(".elan")
-            };
-            cmd.env("ELAN_HOME", elan_home);
-        }
 
         // Resolve Mocks
 
@@ -404,71 +807,87 @@ echo "---END-INVOCATION---" >> "{}"
         let mut charon_mock_mode = None;
         let mut aeneas_mock_mode = None;
 
-        if let Some(mock_config) = &config.mock {
-            if let Some(charon_mock) = &mock_config.charon {
-                let mock_src = self.test_case_root.join(charon_mock);
+        profile_step(&self.test_name, phase_name, "prepare_mocks", || {
+            if let Some(mock_config) = &config.mock {
+                if let Some(charon_mock) = &mock_config.charon {
+                    let mock_src = self.test_case_root.join(charon_mock);
 
-                if charon_mock.ends_with(".sh") {
+                    if charon_mock.ends_with(".sh") {
+                        let bin_dir = self.sandbox_root.join("bin");
+                        fs::create_dir_all(&bin_dir).unwrap();
+                        let script_dest = bin_dir.join(charon_mock);
+                        fs::copy(&mock_src, &script_dest).unwrap();
+
+                        let mut perms = fs::metadata(&script_dest).unwrap().permissions();
+                        perms.set_mode(0o755);
+                        fs::set_permissions(&script_dest, perms).unwrap();
+
+                        charon_mock_mode = Some(MockMode::Script(script_dest));
+                    } else {
+                        let mock_content =
+                            fs::read_to_string(&mock_src).expect("Failed to read mock file");
+
+                        let processed_mock = mock_content
+                            .replace("[PROJECT_ROOT]", self.sandbox_root.to_str().unwrap());
+                        let processed_mock_file = self.sandbox_root.join("mock_charon.json");
+                        fs::write(&processed_mock_file, &processed_mock).unwrap();
+                        charon_mock_mode = Some(MockMode::FailWithOutput(processed_mock_file));
+                    }
+                }
+                if let Some(aeneas_script) = &mock_config.aeneas {
+                    let script_src = self.test_case_root.join(aeneas_script);
                     let bin_dir = self.sandbox_root.join("bin");
                     fs::create_dir_all(&bin_dir).unwrap();
-                    let script_dest = bin_dir.join(charon_mock);
-                    fs::copy(&mock_src, &script_dest).unwrap();
+                    let script_dest = bin_dir.join("mock_aeneas.sh");
+                    fs::copy(&script_src, &script_dest).unwrap();
 
                     let mut perms = fs::metadata(&script_dest).unwrap().permissions();
                     perms.set_mode(0o755);
                     fs::set_permissions(&script_dest, perms).unwrap();
 
-                    charon_mock_mode = Some(MockMode::Script(script_dest));
-                } else {
-                    let mock_content =
-                        fs::read_to_string(&mock_src).expect("Failed to read mock file");
-
-                    let processed_mock =
-                        mock_content.replace("[PROJECT_ROOT]", self.sandbox_root.to_str().unwrap());
-                    let processed_mock_file = self.sandbox_root.join("mock_charon.json");
-                    fs::write(&processed_mock_file, &processed_mock).unwrap();
-                    charon_mock_mode = Some(MockMode::FailWithOutput(processed_mock_file));
+                    aeneas_mock_mode = Some(MockMode::Script(script_dest));
                 }
             }
-            if let Some(aeneas_script) = &mock_config.aeneas {
-                let script_src = self.test_case_root.join(aeneas_script);
-                let bin_dir = self.sandbox_root.join("bin");
-                fs::create_dir_all(&bin_dir).unwrap();
-                let script_dest = bin_dir.join("mock_aeneas.sh");
-                fs::copy(&script_src, &script_dest).unwrap();
-
-                let mut perms = fs::metadata(&script_dest).unwrap().permissions();
-                perms.set_mode(0o755);
-                fs::set_permissions(&script_dest, perms).unwrap();
-
-                aeneas_mock_mode = Some(MockMode::Script(script_dest));
-            }
-        }
+        });
 
         // Create shims for Charon and Aeneas.
         //
-        // Even if we are using the "real" binary, we wrap it in a shim to
-        // capture the arguments passed to it. This allows us to assert that
-        // Anneal calls the tools with the expected arguments.
+        // Most integration tests run against the already-installed toolchain
+        // directly. Only tests that explicitly request mocks or command
+        // assertions use PATH shims.
+        let use_tool_shims = config.mock.is_some() || !config.command.is_empty();
+        let original_path = std::env::var_os("PATH").unwrap_or_default();
+        profile_step(&self.test_name, phase_name, "prepare_tool_shims", || {
+            if use_tool_shims {
+                let toolchain_bin_dir = get_toolchain_bin_dir();
+                let shim_dir = self.sandbox_root.join("bin_shim");
+                fs::create_dir_all(&shim_dir).unwrap();
 
-        let toolchain_path = get_toolchain_path();
-        let real_charon = toolchain_path.join("charon");
-        let shim_dir = self.create_shim("charon", &real_charon, charon_mock_mode).unwrap();
+                if charon_mock_mode.is_some() || !config.command.is_empty() {
+                    let real_charon = toolchain_bin_dir.join("charon");
+                    self.create_shim("charon", &real_charon, charon_mock_mode).unwrap();
+                }
+                if aeneas_mock_mode.is_some() {
+                    let real_aeneas = toolchain_bin_dir.join("aeneas");
+                    self.create_shim("aeneas", &real_aeneas, aeneas_mock_mode).unwrap();
+                }
 
-        let real_aeneas = toolchain_path.join("aeneas");
-        self.create_shim("aeneas", &real_aeneas, aeneas_mock_mode).unwrap();
+                let new_path = std::env::join_paths(
+                    std::iter::once(shim_dir)
+                        .chain(std::iter::once(toolchain_bin_dir))
+                        .chain(std::env::split_paths(&original_path)),
+                )
+                .unwrap();
+                cmd.env("PATH", new_path);
+                cmd.env("ANNEAL_USE_PATH_FOR_TOOLS", "1");
+            } else {
+                cmd.env("PATH", original_path);
+            }
+        });
 
         cmd.env("ANNEAL_FORCE_TTY", "1");
         cmd.env("FORCE_COLOR", "1");
-
-        cmd.env("ANNEAL_USE_PATH_FOR_TOOLS", "1");
         cmd.env("RAYON_NUM_THREADS", "1");
-
-        let original_path = std::env::var_os("PATH").unwrap_or_default();
-        let new_path = std::env::join_paths(
-            std::iter::once(shim_dir).chain(std::env::split_paths(&original_path)),
-        )
-        .unwrap();
 
         // Ensure deterministic LLBC generation within the integration test
         // sandbox by rebasing the `workspace_root` off the absolute filesystem
@@ -476,21 +895,13 @@ echo "---END-INVOCATION---" >> "{}"
         let rustflags = format!("--remap-path-prefix={}=/dummy", self.test_case_root.display());
 
         cmd.env("CARGO_TARGET_DIR", self.sandbox_root.join("target"));
-        cmd.env("PATH", new_path);
         cmd.env("RUSTFLAGS", rustflags);
 
-        // Redirect HOME to the persistent home directory within the sandbox.
-        // This ensures that the toolchain is looked up and potentially
-        // repaired/reinstalled in a location that is isolated from the
-        // user's actual home directory but remains persistent across
-        // multiple `anneal` invocations within this single test context.
+        // Redirect HOME to a persistent directory within the sandbox so
+        // user-local Cargo or tool output cannot leak across fixtures.
         cmd.env("HOME", &self.home_dir)
             .env("ANNEAL_TEST_DIR_NAME", "anneal_test_target")
             .env("ANNEAL_HASH_WITH_REMOVED_PREFIX", &self.sandbox_root);
-
-        for (k, v) in &config.env {
-            cmd.env(k, v);
-        }
 
         if !self.sandbox_root.exists() {
             panic!("sandbox_root does NOT exist! {:?}", self.sandbox_root);
@@ -507,19 +918,25 @@ echo "---END-INVOCATION---" >> "{}"
             cmd.arg("verify");
         }
 
-        cmd.assert()
+        run_command_with_profile(&self.test_name, phase_name, cmd)
+            .expect("failed to execute cargo-anneal")
     }
 }
 
 fn run_integration_test(path: &Path) -> datatest_stable::Result<()> {
     let path_str = path.to_string_lossy();
-
-    let anneal_toml_content = fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e));
-    let anneal_toml: AnnealToml = toml::from_str(&anneal_toml_content)
-        .unwrap_or_else(|e| panic!("Failed to parse {}: {}", path.display(), e));
     let test_case_root = path.parent().unwrap();
     let test_name = test_case_root.file_name().unwrap().to_string_lossy().to_string();
+    let _fixture_scope = ProfileScope::new(&test_name, None, "fixture_total");
+
+    let anneal_toml_content = profile_step(&test_name, None, "read_manifest", || {
+        fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e))
+    });
+    let anneal_toml: AnnealToml = profile_step(&test_name, None, "parse_manifest", || {
+        toml::from_str(&anneal_toml_content)
+            .unwrap_or_else(|e| panic!("Failed to parse {}: {}", path.display(), e))
+    });
     assert!(
         !anneal_toml.description.trim().is_empty(),
         "Test {} is missing a non-empty `description` field in anneal.toml",
@@ -528,22 +945,16 @@ fn run_integration_test(path: &Path) -> datatest_stable::Result<()> {
 
     // Special handling for the "dirty_sandbox" test case.
     if path_str.contains("dirty_sandbox/anneal.toml") {
-        return run_dirty_sandbox_test(path);
+        return profile_step(&test_name, None, "dirty_sandbox_test", || {
+            run_dirty_sandbox_test(path)
+        });
     }
-    // // Special handling for the "atomic_writes" test case.
-    // if path_str.contains("atomic_writes/anneal.toml") {
-    //     return run_atomic_writes_test(path);
-    // }
-    // Special handling for the "toolchain_versioning" test case.
-    if path_str.contains("toolchain_versioning/anneal.toml") {
-        return run_toolchain_versioning_test(path);
-    }
-
     // Load the test configuration from the associated 'anneal.toml' manifest.
     let config = anneal_toml.test.unwrap_or_default();
 
     // `path` is `tests/fixtures/<test_case>/anneal.toml`
-    let ctx = TestContext::new(path, &config)?;
+    let ctx =
+        profile_step(&test_name, None, "create_test_context", || TestContext::new(path, &config))?;
 
     if config.phases.is_empty() {
         run_single_phase(&ctx, &config, None)?;
@@ -563,21 +974,28 @@ fn run_integration_test(path: &Path) -> datatest_stable::Result<()> {
     // outputs.
     if !config.artifact.is_empty() {
         let anneal_run_root = ctx.sandbox_root.join("target/anneal/anneal_test_target");
-        assert_artifacts_match(&anneal_run_root, &ctx.test_case_root, &config.artifact)?;
+        profile_step(&ctx.test_name, None, "assert_artifacts", || {
+            assert_artifacts_match(&anneal_run_root, &ctx.test_case_root, &config.artifact)
+        })?;
     }
 
     // Verify Commands
     if !config.command.is_empty() {
-        let log_file = ctx.sandbox_root.join("tool_args.log");
-        if !log_file.exists() {
-            panic!("Command log file not found! Was the shim called?");
-        }
-        let log_content = fs::read_to_string(log_file)?;
-        let invocations = parse_command_log(&log_content);
-        assert_commands_match(&invocations, &config.command);
+        profile_step(&ctx.test_name, None, "assert_commands", || {
+            let log_file = ctx.sandbox_root.join("tool_args.log");
+            if !log_file.exists() {
+                panic!("Command log file not found! Was the shim called?");
+            }
+            let log_content = fs::read_to_string(log_file)?;
+            let invocations = parse_command_log(&log_content);
+            assert_commands_match(&invocations, &config.command);
+            Ok::<_, io::Error>(())
+        })?;
     }
 
-    assert_no_unmapped_files(&ctx, &config);
+    profile_step(&ctx.test_name, None, "assert_no_unmapped_files", || {
+        assert_no_unmapped_files(&ctx, &config)
+    });
 
     Ok(())
 }
@@ -588,17 +1006,6 @@ fn assert_no_unmapped_files(ctx: &TestContext, config: &TestConfig) {
     // Always allowed baseline files/directories
     allowed_paths.insert(ctx.test_case_root.join("source"));
     allowed_paths.insert(ctx.test_case_root.join("anneal.toml"));
-
-    // Track artifacts that are explicitly defined in the test configuration
-    // TOML. This allows them to bypass the unmapped file directory check.
-    if let Some(mock) = &config.mock {
-        if let Some(charon) = &mock.charon {
-            allowed_paths.insert(ctx.test_case_root.join(charon));
-        }
-        if let Some(aeneas) = &mock.aeneas {
-            allowed_paths.insert(ctx.test_case_root.join(aeneas));
-        }
-    }
 
     for extra in &config.extra_inputs {
         allowed_paths.insert(ctx.test_case_root.join(extra));
@@ -670,184 +1077,58 @@ fn run_single_phase(
     base_config: &TestConfig,
     phase: Option<&TestPhase>,
 ) -> datatest_stable::Result<()> {
+    let phase_name = phase.map(|phase| phase.name.as_str());
+    let _phase_scope = ProfileScope::new(&ctx.test_name, phase_name, "phase_total");
+
     if let Some(phase) = phase
         && let Some(action) = &phase.action
     {
         if action == "touch_stale_file" {
-            let target_dir = ctx.sandbox_root.join("target");
-            let generated_root = find_generated_root(&target_dir)?;
-
-            let mut slug_dir = None;
-            for entry in fs::read_dir(&generated_root)? {
-                let entry = entry?;
-                if entry.file_type()?.is_dir() {
-                    slug_dir = Some(entry.path());
-                    break;
+            return profile_step(&ctx.test_name, phase_name, "action_touch_stale_file", || {
+                let generated_root =
+                    ctx.sandbox_root.join("target/anneal/anneal_test_target/lean/generated");
+                if !generated_root.exists() {
+                    return Err(format!(
+                        "Generated Lean directory not found at {}",
+                        generated_root.display()
+                    )
+                    .into());
                 }
-            }
-            let slug_dir = slug_dir.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::NotFound, "No slug directory found in generated root")
-            })?;
 
-            let stale_file = slug_dir.join("Stale.lean");
-            std::fs::write(&stale_file, "INVALID LEAN CODE").unwrap();
-            assert!(stale_file.exists());
+                let mut slug_dir = None;
+                for entry in fs::read_dir(&generated_root)? {
+                    let entry = entry?;
+                    if entry.file_type()?.is_dir() {
+                        slug_dir = Some(entry.path());
+                        break;
+                    }
+                }
+                let slug_dir = slug_dir.ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::NotFound,
+                        "No slug directory found in generated root",
+                    )
+                })?;
 
-            return Ok(());
+                let stale_file = slug_dir.join("Stale.lean");
+                std::fs::write(&stale_file, "INVALID LEAN CODE").unwrap();
+                assert!(stale_file.exists());
+
+                Ok(())
+            });
         } else if action == "delete_lake_dir" {
-            // Delete the `.lake` build artifacts directory. This is used in
-            // `stale_output` tests to force Lake to regenerate its build
-            // artifacts from scratch, ensuring that stale cached data doesn't
-            // mask bugs in artifact generation or synchronization.
-            let lean_root = ctx.sandbox_root.join("target/anneal/anneal_test_target/lean");
-            let lake_dir = lean_root.join(".lake");
-            if lake_dir.exists() {
-                fs::remove_dir_all(&lake_dir).expect("Failed to delete .lake directory");
-            }
-            return Ok(());
-        } else if action.starts_with("delete_toolchain_file ") {
-            let file_name = action.strip_prefix("delete_toolchain_file ").unwrap();
-            let toolchain_root = ctx.home_dir.join(".anneal/toolchain");
-
-            // The toolchain directory name includes a short hash of the version,
-            // which changes whenever the managed dependencies are updated. To
-            // remain robust across version changes, we scan for any directory
-            // existing within the toolchain root.
-            let build_dir = fs::read_dir(&toolchain_root)?
-                .filter_map(|e| e.ok())
-                .find(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::NotFound, "Toolchain build directory not found")
-                })?
-                .path();
-            let target_file = build_dir.join(file_name);
-            if target_file.exists() {
-                fs::remove_file(&target_file).expect("Failed to delete toolchain file");
-            }
-            return Ok(());
-        } else if action.starts_with("corrupt_toolchain_file ") {
-            let file_name = action.strip_prefix("corrupt_toolchain_file ").unwrap();
-            let toolchain_root = ctx.home_dir.join(".anneal/toolchain");
-
-            // Scan for the hash-prefixed toolchain directory.
-            let build_dir = fs::read_dir(&toolchain_root)?
-                .filter_map(|e| e.ok())
-                .find(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::NotFound, "Toolchain build directory not found")
-                })?
-                .path();
-            let target_file = build_dir.join(file_name);
-            if target_file.exists() {
-                // We corrupt the file with a known string that our assertions can
-                // identify later.
-                fs::write(&target_file, "CORRUPTED CONTENT")
-                    .expect("Failed to corrupt toolchain file");
-            }
-            return Ok(());
-        } else if action.starts_with("assert_toolchain_binary ") {
-            let rest = action.strip_prefix("assert_toolchain_binary ").unwrap();
-            let mut parts = rest.split_whitespace();
-            let file_name = parts
-                .next()
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Missing file name"))?;
-            let expected_hash = parts.next();
-
-            let toolchain_root = ctx.home_dir.join(".anneal/toolchain");
-            if !toolchain_root.exists() {
-                let home_exists = ctx.home_dir.exists();
-                let mut entries = Vec::new();
-                if home_exists && let Ok(rd) = fs::read_dir(&ctx.home_dir) {
-                    for e in rd.filter_map(|e| e.ok()) {
-                        entries.push(e.file_name().to_string_lossy().to_string());
-                    }
+            return profile_step(&ctx.test_name, phase_name, "action_delete_lake_dir", || {
+                // Delete the `.lake` build artifacts directory. This is used in
+                // `stale_output` tests to force Lake to regenerate its build
+                // artifacts from scratch, ensuring that stale cached data doesn't
+                // mask bugs in artifact generation or synchronization.
+                let lean_root = ctx.sandbox_root.join("target/anneal/anneal_test_target/lean");
+                let lake_dir = lean_root.join(".lake");
+                if lake_dir.exists() {
+                    fs::remove_dir_all(&lake_dir).expect("Failed to delete .lake directory");
                 }
-                panic!(
-                    "Toolchain root missing at {:?}! home exists: {}, home contents: {:?}",
-                    toolchain_root, home_exists, entries
-                );
-            }
-            // Scan for the hash-prefixed toolchain directory.
-            let build_dir = fs::read_dir(&toolchain_root)?
-                .filter_map(|e| e.ok())
-                .find(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::NotFound, "Toolchain build directory not found")
-                })?
-                .path();
-            let target_file = build_dir.join(file_name);
-
-            match expected_hash {
-                Some("missing") => {
-                    // Assert that the file has been successfully deleted/removed.
-                    if target_file.exists() {
-                        panic!(
-                            "Expected toolchain file '{}' to be missing, but it exists",
-                            file_name
-                        );
-                    }
-                }
-                Some("corrupted") => {
-                    // Assert that the file exists and contains the "CORRUPTED
-                    // CONTENT" string written by a previous
-                    // `corrupt_toolchain_file` action.
-                    if !target_file.exists() {
-                        panic!(
-                            "Expected toolchain file '{}' to exist (corrupted), but it doesn't",
-                            file_name
-                        );
-                    }
-                    let content =
-                        fs::read_to_string(&target_file).expect("Failed to read toolchain file");
-                    if content != "CORRUPTED CONTENT" {
-                        panic!(
-                            "Expected toolchain file '{}' to be corrupted with 'CORRUPTED CONTENT', but it has different content",
-                            file_name
-                        );
-                    }
-                }
-                Some(expected_hash) => {
-                    // Normal hash verification mode.
-                    if !target_file.exists() {
-                        panic!("Expected toolchain file '{}' to exist, but it doesn't", file_name);
-                    }
-                    let mut file = fs::File::open(&target_file)?;
-                    let mut hasher = sha2::Sha256::new();
-                    std::io::copy(&mut file, &mut hasher)?;
-                    let actual_hash = format!("{:x}", hasher.finalize());
-
-                    if actual_hash != expected_hash {
-                        panic!(
-                            "Hash mismatch for toolchain file '{}'.\nExpected: {}\nActual:   {}",
-                            file_name, expected_hash, actual_hash
-                        );
-                    }
-                }
-                None => {
-                    // If no hash is specified, just assert existence.
-                    if !target_file.exists() {
-                        panic!("Expected toolchain file '{}' to exist, but it doesn't", file_name);
-                    }
-                }
-            }
-            return Ok(());
-        } else if action.starts_with("assert_toolchain_file_missing ") {
-            let file_name = action.strip_prefix("assert_toolchain_file_missing ").unwrap();
-            let toolchain_root = ctx.home_dir.join(".anneal/toolchain");
-            if let Ok(entries) = fs::read_dir(&toolchain_root) {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                        let target_file = entry.path().join(file_name);
-                        if target_file.exists() {
-                            panic!(
-                                "Expected toolchain file '{}' to be missing, but it exists",
-                                file_name
-                            );
-                        }
-                    }
-                }
-            }
-            return Ok(());
+                Ok(())
+            });
         } else {
             panic!("Unknown action: {}", action);
         }
@@ -869,9 +1150,40 @@ fn run_single_phase(
         }
     }
 
-    let assert = ctx.run_anneal(&config);
+    // `datatest_stable` may schedule fixtures concurrently regardless of
+    // `RUST_TEST_THREADS`. Real toolchain runs copy/use the installed Lean
+    // dependency tree and can exhaust host-wide file handles if many do that at
+    // once. Mock-only tests do not hit that path, so keep those parallel while
+    // serializing the resource-heavy command execution.
+    let run = if config.mock.is_none() {
+        let permit = profile_step(&ctx.test_name, phase_name, "wait_toolchain_run_slot", || {
+            acquire_toolchain_run_slot()
+        });
+        emit_profile_event(json!({
+            "event": "toolchain_run_slot_acquired",
+            "test": ctx.test_name,
+            "phase": phase_name,
+            "slot": permit.slot,
+            "jobs": permit.jobs,
+            "wait_ms": permit.wait.as_millis(),
+        }));
+        let run = ctx.run_anneal(&config, phase_name);
+        emit_profile_event(json!({
+            "event": "toolchain_run_slot_released",
+            "test": ctx.test_name,
+            "phase": phase_name,
+            "slot": permit.slot,
+            "jobs": permit.jobs,
+            "hold_ms": permit.hold_duration().as_millis(),
+        }));
+        run
+    } else {
+        ctx.run_anneal(&config, phase_name)
+    };
+    let assert = run.assert;
 
     // Verify Exit Status
+    let _assert_status_scope = ProfileScope::new(&ctx.test_name, phase_name, "assert_exit_status");
     let assert = match config.expected_status {
         ExpectedStatus::Failure => assert.failure(),
         ExpectedStatus::KnownBug => {
@@ -888,6 +1200,7 @@ fn run_single_phase(
         }
         ExpectedStatus::Success => assert.success(),
     };
+    drop(_assert_status_scope);
 
     // Verify the standard error output of the simulated command.
     //
@@ -899,27 +1212,31 @@ fn run_single_phase(
     // manifest.
     let output = assert.get_output();
     if let Some(stderr_file) = &config.stderr_file {
-        assert_output_file(
-            &ctx.test_case_root,
-            &ctx.sandbox_root,
-            &ctx.test_name,
-            &ctx.home_dir,
-            stderr_file,
-            &output.stderr,
-            "Stderr",
-        );
+        profile_step(&ctx.test_name, phase_name, "assert_stderr", || {
+            assert_output_file(
+                &ctx.test_case_root,
+                &ctx.sandbox_root,
+                &ctx.test_name,
+                &ctx.home_dir,
+                stderr_file,
+                &output.stderr,
+                "Stderr",
+            )
+        });
     }
 
     if let Some(stdout_file) = &config.stdout_file {
-        assert_output_file(
-            &ctx.test_case_root,
-            &ctx.sandbox_root,
-            &ctx.test_name,
-            &ctx.home_dir,
-            stdout_file,
-            &output.stdout,
-            "Stdout",
-        );
+        profile_step(&ctx.test_name, phase_name, "assert_stdout", || {
+            assert_output_file(
+                &ctx.test_case_root,
+                &ctx.sandbox_root,
+                &ctx.test_name,
+                &ctx.home_dir,
+                stdout_file,
+                &output.stdout,
+                "Stdout",
+            )
+        });
     }
 
     Ok(())
@@ -943,22 +1260,28 @@ fn assert_output_file(
     let replace_path = sandbox_root.to_str().unwrap();
 
     let target_dir = get_target_dir();
-    let toolchain_path = get_toolchain_path();
     let target_path_str = target_dir.to_str().unwrap();
-    let toolchain_path_str = toolchain_path.to_str().unwrap();
+    let toolchain_base = get_toolchain_base_dir();
+    let toolchain_base_str = toolchain_base.to_str().unwrap();
+    let toolchain_install_dir = get_toolchain_install_dir();
+    let toolchain_install_dir_str = toolchain_install_dir.to_str().unwrap();
+    let toolchain_bin_dir = get_toolchain_bin_dir();
+    let toolchain_bin_dir_str = toolchain_bin_dir.to_str().unwrap();
     let home_path_str = home_dir.to_str().unwrap();
     // Replace volatile environment-specific paths with static placeholders.
     //
     // - `replace_path` corresponds to the sandbox root, which varies per
     //   test run.
-    // - `toolchain_path_str` corresponds to the global toolchain.
+    // - `toolchain_*` paths correspond to the shared pre-installed toolchain.
     // - `target_path_str` corresponds to the cargo target directory or override.
     // - `home_path_str` corresponds to the user's home directory (redirected in
     //   tests).
     let actual_clean = sanitize_output(
         &actual_str
             .replace(replace_path, "[PROJECT_ROOT]")
-            .replace(toolchain_path_str, "[CACHE_ROOT]")
+            .replace(toolchain_bin_dir_str, "[CACHE_ROOT]")
+            .replace(toolchain_install_dir_str, "[CACHE_ROOT]")
+            .replace(toolchain_base_str, "[CACHE_ROOT]")
             .replace(home_path_str, "[HOME]")
             .replace(target_path_str, "[TARGET_DIR]"),
     );
@@ -997,89 +1320,20 @@ fn parse_command_log(content: &str) -> Vec<Vec<String>> {
             current_args = Vec::new();
         } else if let Some(arg) = line.strip_prefix("CHARON_ARG:") {
             current_args.push(arg.to_string());
-        } else if let Some(arg) = line.strip_prefix("ARG:") {
-            // Backward compat/fallback
-            current_args.push(arg.to_string());
         }
     }
     invocations
-}
-
-/// Verifies that the generating `lakefile.lean` and `lean-toolchain` files
-/// contain the correct Aeneas commit hash and Lean toolchain version,
-/// matching the values specified in `Cargo.toml`.
-fn run_toolchain_versioning_test(path: &Path) -> datatest_stable::Result<()> {
-    let config = TestConfig {
-        args: Some(vec!["verify".into(), "--allow-sorry".into()]),
-        ..Default::default()
-    };
-
-    // 1. Setup TestContext
-    let ctx = TestContext::new(path, &config)?;
-
-    // 3. Run
-    let assert = ctx.run_anneal(&config);
-    assert.success();
-
-    // 4. Verify generated lakefile.lean and lean-toolchain
-    let target_dir = ctx.sandbox_root.join("target");
-
-    // Parse `Cargo.toml` to get the expected values. We expect the tests to be
-    // running in the workspace root, so we can find `Cargo.toml` there.
-    let cargo_toml_path =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("Cargo.toml");
-    let cargo_toml_content = fs::read_to_string(&cargo_toml_path)?;
-    let cargo_toml: toml::Value = toml::from_str(&cargo_toml_content)?;
-    let metadata = cargo_toml
-        .get("package")
-        .and_then(|p| p.get("metadata"))
-        .and_then(|m| m.get("build_rs"))
-        .expect("Cargo.toml must have [package.metadata.build_rs]");
-
-    let expected_rev = metadata.get("aeneas_rev").and_then(|v| v.as_str()).unwrap();
-    let expected_toolchain = metadata.get("lean_toolchain").and_then(|v| v.as_str()).unwrap();
-
-    // Check `lakefile.lean` for the Aeneas revision. Even if using a local
-    // Aeneas path (which the test likely is), we expect the revision to be
-    // present in a comment.
-    let lean_dir = target_dir.join("anneal/anneal_test_target/lean");
-
-    let lakefile_path = lean_dir.join("lakefile.lean");
-    let lakefile_content = fs::read_to_string(&lakefile_path)?;
-
-    if !lakefile_content.contains(expected_rev) {
-        panic!(
-            "lakefile.lean does not contain expected aeneas_rev '{}'. Content:\n{}",
-            expected_rev, lakefile_content
-        );
-    }
-
-    // Check `lean-toolchain` for the correct Lean version.
-    let toolchain_path = lean_dir.join("lean-toolchain");
-    let toolchain_content = fs::read_to_string(&toolchain_path)?;
-
-    // toolchain content usually has a newline
-    if !toolchain_content.trim().contains(expected_toolchain) {
-        panic!(
-            "lean-toolchain does not contain expected toolchain '{}'. Content:\n{}",
-            expected_toolchain, toolchain_content
-        );
-    }
-
-    Ok(())
 }
 
 fn assert_commands_match(invocations: &[Vec<String>], expectations: &[CommandExpectation]) {
     for exp in expectations {
         let found = invocations.iter().any(|cmd| is_subsequence(cmd, &exp.args));
 
-        if !exp.should_not_exist && !found {
+        if !found {
             panic!(
                 "Expected command invocation with args {:?} was not found.\nCaptured Invocations: {:#?}",
                 exp.args, invocations
             );
-        } else if exp.should_not_exist && found {
-            panic!("Unexpected command invocation with args {:?} WAS found.", exp.args);
         }
     }
 }
@@ -1144,9 +1398,8 @@ fn assert_artifacts_match(
             }
         }
 
-        // We match strictly on the slug prefix: "{package}-{target}-"
-        // Updated to use PascalCase to match scanner.rs logic
-        // let prefix = format!("{}-{}-", exp.package, exp.target);
+        // We match strictly on the PascalCase package/target prefix produced by
+        // scanner.rs.
         let pkg_pascal = to_pascal(&exp.package);
         let target_pascal = to_pascal(&exp.target);
         let prefix = format!("{}{}", pkg_pascal, target_pascal);
@@ -1208,19 +1461,6 @@ fn assert_artifacts_match(
                 }
 
                 if matched_all {
-                    for needle in &exp.content_lacks {
-                        if content.contains(needle) {
-                            matched_all = false;
-                            collected_errors.push_str(&format!(
-                                "Artifact '{}' contains unexpected content.\nUnexpected: '{}'\nPath: {:?}\n\n",
-                                file_name, needle, path
-                            ));
-                            break;
-                        }
-                    }
-                }
-
-                if matched_all {
                     any_matched_all = true;
                     break;
                 }
@@ -1274,67 +1514,21 @@ fn assert_artifacts_match(
                 }
 
                 // Because hash suffixes are opaque to the harness, multiple
-                // artifacts might match the package prefix. We use catch_unwind
-                // to test each candidate against the expected golden directory. The
-                // expectation passes if any one artifact matches.
-                // The expectation passes if any one artifact matches.
+                // artifacts might match the package prefix. The expectation
+                // passes if any one artifact matches.
                 let mut any_matched = false;
                 let mut collected_errors = String::new();
 
                 for file_name in matching_items {
                     let actual_path = scan_dir.join(file_name);
 
-                    let result = std::panic::catch_unwind(|| {
-                        if actual_path.is_dir() != expected_path.is_dir() {
-                            panic!(
-                                "Type mismatch: expected {:?} (is_dir: {}), actual {:?} (is_dir: {})",
-                                expected_path,
-                                expected_path.is_dir(),
-                                actual_path,
-                                actual_path.is_dir()
-                            );
-                        }
-
-                        if actual_path.is_dir() {
-                            assert_directories_match(&expected_path, &actual_path).unwrap();
-                        } else {
-                            let e_txt =
-                                fs::read_to_string(&expected_path).unwrap().replace("\r\n", "\n");
-                            let a_txt =
-                                fs::read_to_string(&actual_path).unwrap().replace("\r\n", "\n");
-                            if e_txt != a_txt {
-                                use similar::{ChangeTag, TextDiff};
-                                let diff = TextDiff::from_lines(&e_txt, &a_txt);
-                                let mut diff_str = String::new();
-                                for change in diff.iter_all_changes() {
-                                    let sign = match change.tag() {
-                                        ChangeTag::Delete => "-",
-                                        ChangeTag::Insert => "+",
-                                        ChangeTag::Equal => " ",
-                                    };
-                                    diff_str.push_str(&format!("{sign}{change}"));
-                                }
-                                panic!("Mismatch in {:?}:\n{}", expected_path, diff_str);
-                            }
-                        }
-                    });
-
-                    match result {
-                        Ok(_) => {
+                    match artifact_path_matches(&expected_path, &actual_path) {
+                        Ok(()) => {
                             any_matched = true;
                             break;
                         }
-                        Err(e) => {
-                            let err_msg = if let Some(s) = e.downcast_ref::<&str>() {
-                                s.to_string()
-                            } else {
-                                "Unknown panic during assertion".to_string()
-                            };
-                            collected_errors.push_str(&format!(
-                                "Artifact '{}' mismatch:\n{}\n",
-                                file_name, err_msg
-                            ));
-                        }
+                        Err(e) => collected_errors
+                            .push_str(&format!("Artifact '{}' mismatch:\n{}\n", file_name, e)),
                     }
                 }
 
@@ -1351,51 +1545,87 @@ fn assert_artifacts_match(
     Ok(())
 }
 
-fn assert_directories_match(expected: &Path, actual: &Path) -> io::Result<()> {
+fn artifact_path_matches(expected: &Path, actual: &Path) -> Result<(), String> {
+    if actual.is_dir() != expected.is_dir() {
+        return Err(format!(
+            "Type mismatch: expected {:?} (is_dir: {}), actual {:?} (is_dir: {})",
+            expected,
+            expected.is_dir(),
+            actual,
+            actual.is_dir()
+        ));
+    }
+
+    if actual.is_dir() {
+        directories_match(expected, actual)
+    } else {
+        files_match(expected, actual)
+    }
+}
+
+fn files_match(expected: &Path, actual: &Path) -> Result<(), String> {
+    let e_txt = fs::read_to_string(expected)
+        .map_err(|e| format!("Failed to read expected file {:?}: {}", expected, e))?
+        .replace("\r\n", "\n");
+    let a_txt = fs::read_to_string(actual)
+        .map_err(|e| format!("Failed to read actual file {:?}: {}", actual, e))?
+        .replace("\r\n", "\n");
+    if e_txt != a_txt {
+        return Err(format!("Mismatch in {:?}:\n{}", expected, diff_text(&e_txt, &a_txt)));
+    }
+    Ok(())
+}
+
+fn directories_match(expected: &Path, actual: &Path) -> Result<(), String> {
     for entry in new_sorted_walkdir(expected) {
-        let entry = entry.map_err(io::Error::other)?;
+        let entry = entry.map_err(|e| e.to_string())?;
         if !entry.file_type().is_file() {
             continue;
         }
         let rel = entry.path().strip_prefix(expected).unwrap();
         let act = actual.join(rel);
         if !act.exists() {
-            panic!(
+            return Err(format!(
                 "Missing file in actual artifact:\nExpected: {:?}\nActual is missing: {:?}",
                 entry.path(),
                 act
-            );
+            ));
         }
-        let e_txt = fs::read_to_string(entry.path())?.replace("\r\n", "\n");
-        let a_txt = fs::read_to_string(&act)?.replace("\r\n", "\n");
-        if e_txt != a_txt {
-            use similar::{ChangeTag, TextDiff};
-            let diff = TextDiff::from_lines(&e_txt, &a_txt);
-            let mut diff_str = String::new();
-            for change in diff.iter_all_changes() {
-                let sign = match change.tag() {
-                    ChangeTag::Delete => "-",
-                    ChangeTag::Insert => "+",
-                    ChangeTag::Equal => " ",
-                };
-                diff_str.push_str(&format!("{sign}{change}"));
-            }
-            panic!("Mismatch in {:?}:\n{}", rel, diff_str);
+        if let Err(e) = files_match(entry.path(), &act) {
+            return Err(format!("Mismatch in {:?}:\n{}", rel, e));
         }
     }
     // Check for extra files in actual
     for entry in new_sorted_walkdir(actual) {
-        let entry = entry.map_err(io::Error::other)?;
+        let entry = entry.map_err(|e| e.to_string())?;
         if !entry.file_type().is_file() {
             continue;
         }
         let rel = entry.path().strip_prefix(actual).unwrap();
         let exp = expected.join(rel);
         if !exp.exists() {
-            panic!("Extra file found in actual artifact that is not in expected:\n{:?}", rel);
+            return Err(format!(
+                "Extra file found in actual artifact that is not in expected:\n{:?}",
+                rel
+            ));
         }
     }
     Ok(())
+}
+
+fn diff_text(expected: &str, actual: &str) -> String {
+    use similar::{ChangeTag, TextDiff};
+    let diff = TextDiff::from_lines(expected, actual);
+    let mut diff_str = String::new();
+    for change in diff.iter_all_changes() {
+        let sign = match change.tag() {
+            ChangeTag::Delete => "-",
+            ChangeTag::Insert => "+",
+            ChangeTag::Equal => " ",
+        };
+        diff_str.push_str(&format!("{sign}{change}"));
+    }
+    diff_str
 }
 
 fn copy_dir_contents(src: &Path, dst: &Path) -> io::Result<()> {
@@ -1426,7 +1656,6 @@ fn copy_dir_contents(src: &Path, dst: &Path) -> io::Result<()> {
 // - Lock-waiting messages from Cargo or other tools (removed)
 // - Hexadecimal hashes in file paths or versions (replaced with `<HASH>`)
 // - Execution timings (replaced with `<TIME>`)
-// - Randomized worker directory IDs (replaced with `<ID>`)
 // - Local IP/port combinations used in mock servers (replaced with
 //   `127.0.0.1:<PORT>`)
 // - Rustup toolchain paths (replaced with `[RUSTUP_TOOLCHAIN]`)
@@ -1439,11 +1668,6 @@ fn sanitize_output(output: &str) -> String {
     let re_timing = regex::Regex::new(r"took \d+(\.\d*)?(m?s)").unwrap();
     let re_lake_timing = regex::Regex::new(r"\(\d+(\.\d*)?m?s\)").unwrap();
     let re_aeneas_time = regex::Regex::new(r"Total execution time: \d+\.\d+ seconds").unwrap();
-    let re_unpacked_time = regex::Regex::new(r"Unpacked in \d+ ms").unwrap();
-    let re_lean_full_install = regex::Regex::new(
-        r"(?m)^leanprover/lean4:[^\n]*\n\nLean toolchain [^\n]* installed successfully\.\n",
-    )
-    .unwrap();
     let re_ip_port = regex::Regex::new(r"127\.0\.0\.1:\d+").unwrap();
     let re_rustup =
         regex::Regex::new(r"[^\s]*/(?:\.rustup|opt/rustup)/toolchains/[^/\s]+").unwrap();
@@ -1453,8 +1677,6 @@ fn sanitize_output(output: &str) -> String {
 
     // Aeneas progress bars contain volatile spinner characters. We strip them.
     let re_applied_prepasses = regex::Regex::new(r"(?m)^.*Applied prepasses:.*$\n?").unwrap();
-    // Pre-building Aeneas Lean library produces volatile output depending on cache state.
-    let re_prebuild_output = regex::Regex::new(r"(?m)^(Pre-building Aeneas Lean library|Fetching Mathlib cache|installing leantar|Fetching ProofWidgets|Current branch:|Using cache|Attempting to download|Decompressing|Unpacked in|Completed successfully!|Building Aeneas Lean library|Build completed successfully|Successfully pre-built).*$\n?").unwrap();
     // Strip ANSI escape codes.
     let re_ansi_escape = regex::Regex::new(r"\x1B\[[0-9;]*[a-zA-Z]").unwrap();
 
@@ -1467,39 +1689,14 @@ fn sanitize_output(output: &str) -> String {
     clean = re_timing.replace_all(&clean, "took <TIME>").into_owned();
     clean = re_lake_timing.replace_all(&clean, "(<TIME>)").into_owned();
     clean = re_aeneas_time.replace_all(&clean, "Total execution time: <TIME> seconds").into_owned();
-    clean = re_unpacked_time.replace_all(&clean, "Unpacked in <TIME> ms").into_owned();
-    clean = re_lean_full_install
-        .replace_all(&clean, "Lean toolchain leanprover/lean4:v4.28.0-rc1 is already installed.\n")
-        .into_owned();
     clean = re_ip_port.replace_all(&clean, "127.0.0.1:<PORT>").into_owned();
     clean = re_rustup.replace_all(&clean, "[RUSTUP_TOOLCHAIN]").into_owned();
     clean = re_elan.replace_all(&clean, "[ELAN_TOOLCHAIN]").into_owned();
     clean = re_lake_progress.replace_all(&clean, "").into_owned();
     clean = re_applied_prepasses.replace_all(&clean, "").into_owned();
-    clean = re_prebuild_output.replace_all(&clean, "").into_owned();
     clean = re_ansi_escape.replace_all(&clean, "").into_owned();
 
     clean
-}
-
-fn find_generated_root(target_dir: &Path) -> datatest_stable::Result<PathBuf> {
-    // Verify that the Anneal output directory structure exists.
-    // Expected path: target/anneal
-    let anneal_dir = target_dir.join("anneal");
-    if !anneal_dir.exists() {
-        return Err(format!("Anneal output directory not found at {}", anneal_dir.display()).into());
-    }
-
-    for entry in fs::read_dir(anneal_dir)? {
-        let entry = entry?;
-        if entry.file_type()?.is_dir() {
-            let generated = entry.path().join("lean/generated");
-            if generated.exists() {
-                return Ok(generated);
-            }
-        }
-    }
-    Err("Could not find generated directory".into())
 }
 
 fn run_dirty_sandbox_test(path: &Path) -> datatest_stable::Result<()> {
