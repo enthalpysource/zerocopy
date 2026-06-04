@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_variables)]
+
 /// This file contains failure cases for the Anneal named bounds feature.
 /// We test both validation errors (rust-level parsing and validation)
 /// and verification errors (Lean-level theorem failures).

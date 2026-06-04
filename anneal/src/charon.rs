@@ -40,10 +40,6 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
 
     let toolchain = crate::setup::Toolchain::resolve()?;
 
-    let rust_sysroot = toolchain.root.join("rust");
-    let rust_bin = rust_sysroot.join("bin");
-    let rust_lib = rust_sysroot.join("lib");
-
     // Helper closure to prepend a path to an existing environment variable,
     // separating them with a colon if the variable is not empty. This is used
     // to inject our managed Rust toolchain paths before the system paths.
@@ -57,11 +53,11 @@ pub fn run_charon(args: &Args, roots: &LockedRoots, packages: &[AnnealArtifact])
         combined
     };
 
-    let new_path = prepend_to_env_var("PATH", rust_bin);
+    let new_path = prepend_to_env_var("PATH", toolchain.rust_bin());
 
     let lib_env_var =
         if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" } else { "LD_LIBRARY_PATH" };
-    let new_lib_path = prepend_to_env_var(lib_env_var, rust_lib);
+    let new_lib_path = prepend_to_env_var(lib_env_var, toolchain.rust_lib());
 
     for artifact in packages {
         if artifact.start_from.is_empty() {
