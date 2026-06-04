@@ -68,7 +68,11 @@ pub struct Args {
 }
 
 #[derive(Parser, Debug)]
-pub struct SetupArgs {}
+pub struct SetupArgs {
+    /// Install dependencies from a locally built exocrate archive.
+    #[arg(long, value_name = "path-to-local-archive")]
+    pub local_archive: Option<PathBuf>,
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]
@@ -224,16 +228,9 @@ pub fn resolve_roots(args: &Args) -> Result<Roots> {
     args.features.forward_metadata(&mut cmd);
 
     let metadata = cmd.exec().context("Failed to run 'cargo metadata'")?;
-    // We enforce that all local dependencies are contained within the workspace
-    // root. This is a temporary limitation to simplify the verification model
-    // and ensure a "hermetic-like" boundary for analysis. It prevents issues
-    // where experimental or local forks of dependencies might be picked up
-    // unpredictably, or where Charon might struggle to locate source files
-    // outside the standard project structure.
-    check_for_external_deps(&metadata)?;
-
     let selected_packages =
         resolve_packages(&metadata, &args.workspace, args.manifest.manifest_path.as_deref())?;
+    check_selected_packages_in_workspace(&metadata, &selected_packages)?;
 
     let (anneal_global_root, anneal_run_root) = resolve_run_roots(&metadata);
     let mut roots = Roots {
@@ -442,39 +439,38 @@ fn resolve_targets<'a>(
     Ok(selected_artifacts)
 }
 
-// TODO: Eventually, we'll want to support external path dependencies by
-// analyzing them in-place or ensuring they are accessible to Charon.
+// TODO: Eventually, we'll want to support selected packages outside the Cargo
+// workspace root by analyzing them in-place or teaching downstream stages how
+// to map those source files.
 
-/// Scans the package graph to ensure all local dependencies are contained
-/// within the workspace root. Returns an error if an external path dependency
-/// is found.
-pub fn check_for_external_deps(metadata: &Metadata) -> Result<()> {
-    log::trace!("check_for_external_deps");
+/// Ensures every selected verification root is contained within the workspace root.
+fn check_selected_packages_in_workspace(metadata: &Metadata, packages: &[&Package]) -> Result<()> {
+    log::trace!("check_selected_packages_in_workspace");
     // Canonicalize workspace root to handle symlinks correctly
     let workspace_root = fs::canonicalize(&metadata.workspace_root)
         .context("Failed to canonicalize workspace root")?;
 
-    for pkg in &metadata.packages {
-        // We only care about packages that are "local" (source is None).
-        // If source is Some(...), it's from crates.io or git, which is fine
-        // (handled by Cargo).
-        if pkg.source.is_none() {
-            let pkg_path = pkg.manifest_path.as_std_path();
+    for pkg in packages {
+        let pkg_path = pkg.manifest_path.as_std_path();
 
-            // Canonicalize the package path for comparison
-            let canonical_pkg_path = fs::canonicalize(pkg_path)
-                .with_context(|| format!("Failed to canonicalize path for package {}", pkg.name))?;
+        // Canonicalize the package path for comparison
+        let canonical_pkg_path = fs::canonicalize(pkg_path)
+            .with_context(|| format!("Failed to canonicalize path for package {}", pkg.name))?;
 
-            // Check if the package lives outside the workspace tree
-            if !canonical_pkg_path.starts_with(&workspace_root) {
-                anyhow::bail!(
-                    "Unsupported external dependency: '{}' at {:?}.\n\
-                     Anneal currently only supports verifying workspaces where all local \
-                     dependencies are contained within the workspace root.",
-                    pkg.name,
-                    pkg_path
-                );
-            }
+        // We only constrain the packages Anneal will scan as verification
+        // roots. Cargo metadata may also include build-only local path
+        // dependencies from the Anneal implementation itself, such as the
+        // repository-root `exocrate` helper crate when running
+        // `cargo run verify`. Rejecting those would make Anneal's own package
+        // layout constrain user verification.
+        if !canonical_pkg_path.starts_with(&workspace_root) {
+            anyhow::bail!(
+                "Unsupported external package: '{}' at {:?}.\n\
+                 Anneal currently only supports verifying packages contained \
+                 within the workspace root.",
+                pkg.name,
+                pkg_path
+            );
         }
     }
 
