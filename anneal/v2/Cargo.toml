@@ -42,7 +42,7 @@ sha256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 url = "https://example.com/macos-aarch64.tar.zst"
 
 [dependencies]
-exocrate = { path = "../../exocrate" }
+exocrate = { path = "../exocrate" }
 toml_const = "1.3.0"
 clap = { version = "4.5", features = ["derive"] }
 env_logger = "0.11"
