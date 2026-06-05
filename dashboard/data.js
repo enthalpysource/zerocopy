@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780637189287,
+  "lastUpdate": 1780637841470,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -18316,6 +18316,43 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 621,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]",
+            "email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "bc0bb77346772be0e80aeb68f8f3f9b2e58a1612",
+          "message": "Bump the cargo group across 1 directory with 4 updates (#3435)\n\nBumps the cargo group with 4 updates in the /anneal directory: [tar](https://github.com/composefs/tar-rs), [openssl](https://github.com/rust-openssl/rust-openssl), [rand](https://github.com/rust-random/rand) and [rustls-webpki](https://github.com/rustls/webpki).\n\n\nUpdates `tar` from 0.4.45 to 0.4.46\n- [Release notes](https://github.com/composefs/tar-rs/releases)\n- [Commits](https://github.com/composefs/tar-rs/compare/0.4.45...0.4.46)\n\nUpdates `openssl` from 0.10.76 to 0.10.80\n- [Release notes](https://github.com/rust-openssl/rust-openssl/releases)\n- [Commits](https://github.com/rust-openssl/rust-openssl/compare/openssl-v0.10.76...openssl-v0.10.80)\n\nUpdates `rand` from 0.9.2 to 0.9.4\n- [Release notes](https://github.com/rust-random/rand/releases)\n- [Changelog](https://github.com/rust-random/rand/blob/0.9.4/CHANGELOG.md)\n- [Commits](https://github.com/rust-random/rand/compare/rand_core-0.9.2...0.9.4)\n\nUpdates `rustls-webpki` from 0.103.10 to 0.103.13\n- [Release notes](https://github.com/rustls/webpki/releases)\n- [Commits](https://github.com/rustls/webpki/compare/v/0.103.10...v/0.103.13)\n\n---\nupdated-dependencies:\n- dependency-name: tar\n  dependency-version: 0.4.46\n  dependency-type: direct:production\n  dependency-group: cargo\n- dependency-name: openssl\n  dependency-version: 0.10.80\n  dependency-type: indirect\n  dependency-group: cargo\n- dependency-name: rand\n  dependency-version: 0.9.4\n  dependency-type: indirect\n  dependency-group: cargo\n- dependency-name: rustls-webpki\n  dependency-version: 0.103.13\n  dependency-type: indirect\n  dependency-group: cargo\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-06-05T05:08:07Z",
+          "url": "https://github.com/google/zerocopy/commit/bc0bb77346772be0e80aeb68f8f3f9b2e58a1612"
+        },
+        "date": 1780637839306,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 91,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 518,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 630,
             "unit": "seconds"
           }
         ]
