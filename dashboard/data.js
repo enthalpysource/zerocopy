@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780689588194,
+  "lastUpdate": 1780696652217,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -10029,6 +10029,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 7,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mark Dittmer",
+            "username": "mdittmer",
+            "email": "mdittmer@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4d76e9893f4ff90ddaf16bbad68f9c148df35cb0",
+          "message": "[anneal][v2] Add and integrate nix-built exocrate (#3383)\n\n- Add nix derivations for exocrate\n- Add `setup` sub-command to locate-or-install exocrate\n- Add integration test for \"developer mode\" `setup` that presumes local\n  exocrate archive\n- Add github workflows to:\n  - Warm nix cache\n  - Locally link exocrate archive from nix, then run all tests\n\ngherrit-pr-id: Gwhroikc5idscowxamayknlke2uiddzv3",
+          "timestamp": "2026-06-05T21:51:39Z",
+          "url": "https://github.com/google/zerocopy/commit/4d76e9893f4ff90ddaf16bbad68f9c148df35cb0"
+        },
+        "date": 1780696650305,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 9,
             "unit": "seconds"
           }
         ]
