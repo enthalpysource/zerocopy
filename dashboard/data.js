@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780634518442,
+  "lastUpdate": 1780634934972,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -18155,6 +18155,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 614,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@users.noreply.github.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a773081477608b799ccdd48de490de139e19873c",
+          "message": "[zerocopy] Move to `zerocopy` subdirectory (#3434)\n\nMove the Zerocopy crate and its vendored Cargo configuration under\n`zerocopy/`, and update CI, docs, hooks, and helper scripts to run\nzerocopy commands from that directory.\n\nThis keeps zerocopy in its own vendored Cargo world while allowing\ntools, Anneal, and future crates to use normal Cargo resolution and not\nrequire vendoring their dependencies.\n\nAlso move `anneal/v2/exocrate` to the repository root.\n\ngherrit-pr-id: Ghuilhfh6h4womt35vc6domtloovmnnhl",
+          "timestamp": "2026-06-05T04:04:48Z",
+          "tree_id": "60647c9d9df642af06edc6597d6f373d203aaccc",
+          "url": "https://github.com/google/zerocopy/commit/a773081477608b799ccdd48de490de139e19873c"
+        },
+        "date": 1780634932153,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 102,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 518,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 643,
             "unit": "seconds"
           }
         ]
