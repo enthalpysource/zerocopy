@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780696921780,
+  "lastUpdate": 1780697040472,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -1183,6 +1183,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/google/zerocopy/commit/c97143cb09c7edb578c4a9edaf50d8db720f60a9"
         },
         "date": 1780670073913,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Image Size",
+            "value": 11650,
+            "unit": "Megabytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mdittmer@users.noreply.github.com",
+            "name": "Mark Dittmer",
+            "username": "mdittmer"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b7d9acf849ef9791776ad100da386ac67b8a8a60",
+          "message": "[anneal][v2] Add and integrate nix-built exocrate (#3383)\n\n- Add nix derivations for exocrate\n- Add `setup` sub-command to locate-or-install exocrate\n- Add integration test for \"developer mode\" `setup` that presumes local\n  exocrate archive\n- Add github workflows to:\n  - Warm nix cache\n  - Locally link exocrate archive from nix, then run all tests\n\ngherrit-pr-id: Gwhroikc5idscowxamayknlke2uiddzv3",
+          "timestamp": "2026-06-05T18:00:27-04:00",
+          "tree_id": "ead44d2b940c9097c6db13604d193d3f48190e3e",
+          "url": "https://github.com/google/zerocopy/commit/b7d9acf849ef9791776ad100da386ac67b8a8a60"
+        },
+        "date": 1780697039289,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
