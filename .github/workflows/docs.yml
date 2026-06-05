@@ -32,6 +32,9 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    defaults:
+      run:
+        working-directory: zerocopy
     permissions:
       contents: read
     steps:
@@ -86,8 +89,8 @@ jobs:
         # the documentation folder so they get published to GitHub Pages.
         run: |
           mkdir -p target/doc/bench
-          if [ -d temp-bench/dashboard ]; then
-            cp -r temp-bench/dashboard/* target/doc/bench/
+          if [ -d ../temp-bench/dashboard ]; then
+            cp -r ../temp-bench/dashboard/* target/doc/bench/
           else
             echo "No benchmark dashboard files found to copy."
           fi
@@ -95,7 +98,7 @@ jobs:
       - name: Upload Cargo doc output to GitHub Pages
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
-          path: target/doc
+          path: zerocopy/target/doc
   deploy:
     name: Deploy to GitHub Pages
     environment:

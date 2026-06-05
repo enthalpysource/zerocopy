@@ -9,6 +9,7 @@
 # those terms.
 
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
 # This allows us to leave XODO comments in this file and have them still be
 # picked up by this script without having the script itself trigger false
@@ -25,7 +26,18 @@ rg --version >/dev/null
 # -w: Match whole words
 # Match TODO, TODO-check-disable, and TODO-check-enable
 PATTERN="$KEYWORD|$KEYWORD-check-disable|$KEYWORD-check-enable"
-output=$(rg -H -n -w "$PATTERN" "$@" || true)
+if [ "$#" -eq 0 ]; then
+  # The no-argument CI mode enforces Zerocopy's strict TODO policy over
+  # Zerocopy and shared repository machinery. Anneal and exocrate have their own
+  # project norms and existing TODOs.
+  PATHS=(ci githooks tools zerocopy)
+else
+  PATHS=("$@")
+fi
+
+# Vendored dependencies have their own task-marker norms; enforce this only on
+# code we maintain.
+output=$(rg -H -n -w --glob '!**/vendor/**' "$PATTERN" "${PATHS[@]}" || true)
 
 commit_output=$(git log -1 --pretty=%B 2>/dev/null | rg -n -w "$PATTERN" || true)
 if [ -n "$commit_output" ]; then

@@ -13,12 +13,15 @@ NOT_APPROVED = 1
 TECHNICAL_ERROR = 255
 
 def main():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(script_dir)
+
     parser = argparse.ArgumentParser(
         description="Validate PR changes against auto-approver rules."
     )
     parser.add_argument(
         "--config",
-        default=".github/auto-approvers.json",
+        default=os.path.join(repo_root, ".github", "auto-approvers.json"),
         help="Path to the rules JSON.",
     )
     parser.add_argument(
