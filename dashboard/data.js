@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780671535472,
+  "lastUpdate": 1780672192388,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -18686,6 +18686,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 506,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "cb7c1ea5c58cf7c49eb48227eb29ff99718f6490",
+          "message": "Introduce `derive(most_traits)` and rename unstable linux cfg",
+          "timestamp": "2026-06-05T14:31:56Z",
+          "url": "https://github.com/google/zerocopy/pull/3416/commits/cb7c1ea5c58cf7c49eb48227eb29ff99718f6490"
+        },
+        "date": 1780672190287,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 91,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 522,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 635,
             "unit": "seconds"
           }
         ]
