@@ -60,7 +60,7 @@ jobs:
           if [ "$TOOLCHAIN" == stable ]; then
             # Install whatever the latest stable release is. This has the side
             # effect of determining the latest stable release so that we can
-            # update `Cargo.toml`.
+            # update `zerocopy/Cargo.toml`.
             echo "ZC_TARGET_TOOLCHAIN=stable" >> $GITHUB_ENV
           else
             # Use yesterday's date (`-d '-1 day'`) so we're sure the nightly for
@@ -86,21 +86,21 @@ jobs:
             VERSION="$2"
             ZEROCOPY_FEATURES="$3"
 
-            # Confirm that `Cargo.toml` lists the pinned version in the expected
+            # Confirm that `zerocopy/Cargo.toml` lists the pinned version in the expected
             # format. This is a prerequisite for the subsequent `sed` command.
             REGEX="^pinned-$VERSION_NAME = \"[a-z0-9\.-]*\"$"
-            validate-file "$REGEX" Cargo.toml
-            sed -i -e "s/$REGEX/pinned-$VERSION_NAME = \"$VERSION\"/" Cargo.toml
+            validate-file "$REGEX" zerocopy/Cargo.toml
+            sed -i -e "s/$REGEX/pinned-$VERSION_NAME = \"$VERSION\"/" zerocopy/Cargo.toml
 
-            # Confirm that the update didn't bork `Cargo.toml`.
-            validate-file "$REGEX" Cargo.toml
+            # Confirm that the update didn't bork `zerocopy/Cargo.toml`.
+            validate-file "$REGEX" zerocopy/Cargo.toml
 
             # Run `cargo fix` in case there are any warnings or errors
             # introduced on this new toolchain that we can fix automatically.
             # This is best-effort, so we don't let failure cause the whole job
             # to fail.
-            ./cargo.sh "+$VERSION_NAME" fix --allow-dirty --tests --package zerocopy $ZEROCOPY_FEATURES || true
-            ./cargo.sh "+$VERSION_NAME" fix --allow-dirty --tests --package zerocopy-derive             || true
+            ./zerocopy/cargo.sh "+$VERSION_NAME" fix --allow-dirty --tests --package zerocopy $ZEROCOPY_FEATURES || true
+            ./zerocopy/cargo.sh "+$VERSION_NAME" fix --allow-dirty --tests --package zerocopy-derive             || true
 
             ./tools/update-expected-test-output.sh
           }

@@ -15,7 +15,5 @@ lcov.info
 
 # Unconditionally commit everything inside vendor directories (overrides
 # previous rules)
-!vendor/**
-!tools/vendor/**
-!hermes/vendor/**
+!zerocopy/vendor/**
 !**/vendor/**/target/

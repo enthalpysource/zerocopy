@@ -40,7 +40,7 @@ jobs:
       - name: Overwrite Cargo.toml files
         env:
           VERSION: ${{ github.event.inputs.version }}
-        run: ./ci/release_crate_version.sh "$VERSION"
+        run: ./zerocopy/ci/release_crate_version.sh "$VERSION"
 
       - name: Submit PR
         id: submit-pr

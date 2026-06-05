@@ -1,10 +1,6 @@
 #!/bin/bash
 set -eo pipefail
 
-# Remove cargo configs if they exist
-rm -f .cargo/config.toml
-rm -f ../.cargo/config.toml
-
 # Verify exactly one occurrence of the relative path
 COUNT=$(grep -c "docs/images/logo.svg" README.md || true)
 if [ "$COUNT" -ne 1 ]; then

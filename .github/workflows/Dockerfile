@@ -37,11 +37,12 @@ RUN cargo install cargo-nextest --locked                    && \
 
 WORKDIR /setup
 
-COPY Cargo.toml ./
-COPY cargo.sh   ./
-COPY tools      ./tools
+COPY zerocopy/Cargo.toml ./zerocopy/Cargo.toml
+COPY zerocopy/cargo.sh   ./zerocopy/cargo.sh
+COPY tools              ./tools
 
 ENV CARGO_ZEROCOPY_AUTO_INSTALL_TOOLCHAIN=1
+WORKDIR /setup/zerocopy
 RUN ./cargo.sh +stable --version  && \
     ./cargo.sh +nightly --version && \
     ./cargo.sh +msrv --version    && \

@@ -8,10 +8,13 @@
 # those terms.
 
 /target/
+/zerocopy/target/
+/anneal/target/
+/anneal/v2/target/
+/tools/target/
+/exocrate/target/
 /hermes/target/
 **/.git/
-tools/vendor
-tools/.cargo/
 
 # FIXME: This is just a symlink to `../hermes`, intended to ensure that old
 # links to `tools/hermes` are less confusing since we've moved that directory to

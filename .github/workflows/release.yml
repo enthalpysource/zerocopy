@@ -13,8 +13,8 @@ on:
     branches:
       - main
     paths:
-      - 'Cargo.toml'
-      - 'zerocopy-derive/Cargo.toml'
+      - 'zerocopy/Cargo.toml'
+      - 'zerocopy/zerocopy-derive/Cargo.toml'
 
 # We set no permissions at the top level, and instead set them granularly for
 # each job.
@@ -43,8 +43,9 @@ jobs:
           persist-credentials: false
           fetch-depth: 0 # Fetch all history for version comparison and tags
 
-      # Checks whether zerocopy's version (in `Cargo.toml`) or zerocopy-derive's
-      # version (in `zerocopy-derive/Cargo.toml`) were updated in this commit.
+      # Checks whether zerocopy's version (in `zerocopy/Cargo.toml`) or
+      # zerocopy-derive's version (in `zerocopy/zerocopy-derive/Cargo.toml`) were
+      # updated in this commit.
       # We check below to make sure they're the same; the point of checking both
       # (which is unnecessary if the commit correctly updates both) is to catch
       # situations where one is updated – we want to catch it regardless of
@@ -54,19 +55,30 @@ jobs:
         run: |
           set -eo pipefail
 
+          function cargo_zc {
+            # This helper lets the first commit which introduces the nested
+            # zerocopy/ layout compare versions against its parent commit, which
+            # still has cargo.sh at the repository root.
+            if [[ -x zerocopy/cargo.sh ]]; then
+              (cd zerocopy && ./cargo.sh "$@")
+            else
+              ./cargo.sh "$@"
+            fi
+          }
+
           # Get current versions
           #
           # Pre-install toolchains so `rustup` output isn't piped to `jq`.
-          ./cargo.sh +stable help > /dev/null
-          CUR_VER_ZC=$(./cargo.sh +stable metadata -q --format-version 1 | jq -r '.packages[] | select(.name == "zerocopy").version')
-          CUR_VER_DERIVE=$(./cargo.sh +stable metadata -q --format-version 1 | jq -r '.packages[] | select(.name == "zerocopy-derive").version')
+          cargo_zc +stable help > /dev/null
+          CUR_VER_ZC=$(cargo_zc +stable metadata -q --format-version 1 | jq -r '.packages[] | select(.name == "zerocopy").version')
+          CUR_VER_DERIVE=$(cargo_zc +stable metadata -q --format-version 1 | jq -r '.packages[] | select(.name == "zerocopy-derive").version')
 
           # Get previous versions using cargo metadata by temporarily checking it out
           git checkout -q HEAD^
           # Pre-install toolchains so `rustup` output isn't piped to `jq`.
-          ./cargo.sh +stable help > /dev/null
-          PREV_VER_ZC=$(./cargo.sh +stable metadata -q --format-version 1 | jq -r '.packages[] | select(.name == "zerocopy").version')
-          PREV_VER_DERIVE=$(./cargo.sh +stable metadata -q --format-version 1 | jq -r '.packages[] | select(.name == "zerocopy-derive").version')
+          cargo_zc +stable help > /dev/null
+          PREV_VER_ZC=$(cargo_zc +stable metadata -q --format-version 1 | jq -r '.packages[] | select(.name == "zerocopy").version')
+          PREV_VER_DERIVE=$(cargo_zc +stable metadata -q --format-version 1 | jq -r '.packages[] | select(.name == "zerocopy-derive").version')
           git checkout -q -
 
           if [ "$CUR_VER_ZC" != "$PREV_VER_ZC" ] || [ "$CUR_VER_DERIVE" != "$PREV_VER_DERIVE" ]; then
@@ -89,6 +101,9 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zerocopy
     # This environment is configured to require manual review before executing
     # this job.
     environment: release

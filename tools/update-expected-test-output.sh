@@ -9,6 +9,7 @@
 # those terms.
 
 set -eo pipefail
+cd "$(dirname "$0")/../zerocopy"
 
 # Update the `.stderr` reference files used to validate our UI tests and the
 # `.x86-64.mca` files used to validate our codegen tests.
