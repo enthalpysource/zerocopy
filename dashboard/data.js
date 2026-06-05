@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780675416145,
+  "lastUpdate": 1780676116122,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -18996,6 +18996,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 635,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "ea0358ed52b7bd3ed92443a2c83a57d1abfe0465",
+          "message": "[anneal][v2] Add utility functions: environment helpers and DirLock",
+          "timestamp": "2026-06-05T14:31:56Z",
+          "url": "https://github.com/google/zerocopy/pull/3399/commits/ea0358ed52b7bd3ed92443a2c83a57d1abfe0465"
+        },
+        "date": 1780676114326,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 92,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 475,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 589,
             "unit": "seconds"
           }
         ]
