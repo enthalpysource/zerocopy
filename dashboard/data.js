@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780634934972,
+  "lastUpdate": 1780635245974,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -18194,6 +18194,41 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 643,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "366d9ad222be87ad1311a0fb45e96d23f25381f0",
+          "message": "[CI] Bump the all-actions group across 1 directory with 13 updates",
+          "timestamp": "2026-06-05T04:37:36Z",
+          "url": "https://github.com/google/zerocopy/pull/3431/commits/366d9ad222be87ad1311a0fb45e96d23f25381f0"
+        },
+        "date": 1780635242428,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 110,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 567,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 708,
             "unit": "seconds"
           }
         ]
