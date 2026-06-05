@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780675410076,
+  "lastUpdate": 1780675413071,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -9929,6 +9929,31 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 11,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "99996e42477579faa684a3a86b860998f9bf70a1",
+          "message": "[anneal][v2] Import vendored cargo dependencies",
+          "timestamp": "2026-06-05T14:31:56Z",
+          "url": "https://github.com/google/zerocopy/pull/3398/commits/99996e42477579faa684a3a86b860998f9bf70a1"
+        },
+        "date": 1780675407770,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 13,
             "unit": "seconds"
           }
         ]
