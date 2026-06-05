@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780668077044,
+  "lastUpdate": 1780668750368,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -18477,6 +18477,43 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 605,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "eiffel-fl",
+            "username": "eiffel-fl",
+            "email": "laniel_francis@privacyrequired.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c97143cb09c7edb578c4a9edaf50d8db720f60a9",
+          "message": "[byteorder] Add cfg no_fp_fmt_parse (#3429)\n\nThis cfg deactivates Debug and Display for floatting point numbers, this is\nparticluarly useful in kernel context.\nThe implementation is inspired by:\nhttps://github.com/rust-lang/rust/commit/ec7292ad3c35\n\nFixes #3426",
+          "timestamp": "2026-06-05T13:59:43Z",
+          "url": "https://github.com/google/zerocopy/commit/c97143cb09c7edb578c4a9edaf50d8db720f60a9"
+        },
+        "date": 1780668748361,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Pull Time",
+            "value": 100,
+            "unit": "seconds"
+          },
+          {
+            "name": "Test Time",
+            "value": 511,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 636,
             "unit": "seconds"
           }
         ]
