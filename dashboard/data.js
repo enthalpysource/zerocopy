@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780632279568,
+  "lastUpdate": 1780632341294,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -9324,6 +9324,33 @@ window.BENCHMARK_DATA = {
           {
             "name": "Docker Build Time",
             "value": 6,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf",
+            "email": "joshlf@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "a773081477608b799ccdd48de490de139e19873c",
+          "message": "[zerocopy] Move to `zerocopy` subdirectory (#3434)\n\nMove the Zerocopy crate and its vendored Cargo configuration under\n`zerocopy/`, and update CI, docs, hooks, and helper scripts to run\nzerocopy commands from that directory.\n\nThis keeps zerocopy in its own vendored Cargo world while allowing\ntools, Anneal, and future crates to use normal Cargo resolution and not\nrequire vendoring their dependencies.\n\nAlso move `anneal/v2/exocrate` to the repository root.\n\ngherrit-pr-id: Ghuilhfh6h4womt35vc6domtloovmnnhl",
+          "timestamp": "2026-06-05T04:04:48Z",
+          "url": "https://github.com/google/zerocopy/commit/a773081477608b799ccdd48de490de139e19873c"
+        },
+        "date": 1780632339822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Docker Build Time",
+            "value": 7,
             "unit": "seconds"
           }
         ]
