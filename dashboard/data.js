@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780723782387,
+  "lastUpdate": 1780723791675,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -20465,6 +20465,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 778,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "d49f8f0c162401735b6393cc5733103e5e318f00",
+          "message": "[anneal][v2] Add Cargo dependencies",
+          "timestamp": "2026-06-06T04:22:48Z",
+          "url": "https://github.com/google/zerocopy/pull/3398/commits/d49f8f0c162401735b6393cc5733103e5e318f00"
+        },
+        "date": 1780723790081,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Test Time",
+            "value": 596,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 811,
             "unit": "seconds"
           }
         ]
