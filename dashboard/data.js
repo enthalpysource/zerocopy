@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780711301264,
+  "lastUpdate": 1780713537302,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -19775,6 +19775,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 845,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "77d5af07608327e18540bb65ce2f5b931f057bb3",
+          "message": "[anneal] Move setup and CI onto Nix archive",
+          "timestamp": "2026-06-05T22:00:32Z",
+          "url": "https://github.com/google/zerocopy/pull/3438/commits/77d5af07608327e18540bb65ce2f5b931f057bb3"
+        },
+        "date": 1780713536144,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Test Time",
+            "value": 585,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 790,
             "unit": "seconds"
           }
         ]
