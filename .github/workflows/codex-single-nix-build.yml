@@ -1,0 +1,81 @@
+# Copyright 2026 The Fuchsia Authors
+#
+# Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+# <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+# license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+# This file may not be copied, modified, or distributed except according to
+# those terms.
+
+name: Codex Single Nix Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Fork ref to test'
+        required: true
+        default: 'codex/anneal-release-autonomous'
+      runner:
+        description: 'GitHub runner label'
+        required: true
+      system:
+        description: 'Nix system'
+        required: true
+      package:
+        description: 'Nix package'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  nix-package:
+    name: ${{ github.event.inputs.system }} ${{ github.event.inputs.package }}
+    runs-on: ${{ github.event.inputs.runner }}
+    timeout-minutes: 120
+    steps:
+      - name: Print platform
+        run: |
+          set -eux
+          uname -a
+          uname -m
+          echo "runner.os=${{ runner.os }}"
+          echo "runner.arch=${{ runner.arch }}"
+
+      - name: Print macOS details
+        if: runner.os == 'macOS'
+        run: |
+          set -eux
+          sw_vers
+          sysctl -n machdep.cpu.brand_string || true
+
+      - name: Checkout test ref
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@441b9e401ac050c38a07d8313748c5c2d17e8aff # v3.6.1
+
+      - name: Enable unprivileged user namespaces (Ubuntu 24.04)
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Build package
+        env:
+          SYSTEM: ${{ github.event.inputs.system }}
+          PACKAGE: ${{ github.event.inputs.package }}
+        run: |
+          set -eux
+          nix --version
+          nix build \
+            --extra-experimental-features 'nix-command flakes' \
+            --print-build-logs \
+            --show-trace \
+            --no-link \
+            "./anneal/v2#packages.${SYSTEM}.${PACKAGE}"
+
+      - name: Restore AppArmor restriction
+        if: always() && runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
