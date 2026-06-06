@@ -27,6 +27,73 @@
                        else if system == "aarch64-darwin" then "darwin_aarch64"
                        else throw "Unsupported system: ${system}";
 
+        aeneasTarget = if system == "x86_64-linux" then "linux-x86_64"
+                       else if system == "aarch64-linux" then "linux-aarch64"
+                       else if system == "x86_64-darwin" then "macos-x86_64"
+                       else if system == "aarch64-darwin" then "macos-aarch64"
+                       else throw "Unsupported system: ${system}";
+
+        aeneasSha256 = if system == "x86_64-linux" then "sha256-APuO9CfU0G3KvZD1GWJm4HcxrfKnRmlkzm9PbR6MvBE="
+                       else if system == "aarch64-linux" then "sha256-JUAsTLy32i0zfLFoZjVCvJx1rpsQ0tJwj1KJ6MqdGQI="
+                       else if system == "x86_64-darwin" then "sha256-uiXuhXp2+o9MECL23/QHLJoBAHRT1nxhz7qhqhwD4xc="
+                       else if system == "aarch64-darwin" then "sha256-dveLZF4zjsfokynwrSJ5KZf0K9m16xRkOsMq3iJO62E="
+                       else throw "Unsupported system: ${system}";
+
+        rustDate = "2026-05-31";
+        leanVersion = "v4.30.0-rc2";
+
+        rustToolchainSha256 = if system == "x86_64-linux" then "sha256-tdLBvDewiNTUKOdMJ1pkU7mPrUY0xTFOZWdG9dDNiAk="
+                              else if system == "aarch64-linux" then "sha256-5gGGsObb22cKc2beF5UWMEJN4Df4PM23hK0A4QJ/kEM="
+                              else if system == "x86_64-darwin" then "sha256-v3By/ilhfQEfNECMoNlMC0pQndo5Lq1CTTbjcsaXMPw="
+                              else if system == "aarch64-darwin" then "sha256-I8pM8VuoBc5R/4ZR3ZiuHmbQjn361QOXTTU+kD5B0p8="
+                              else throw "Unsupported system: ${system}";
+
+        leanToolchainSha256 = if system == "x86_64-linux" then "sha256-o47cQjSLK5YL8YZ2raaj+mGAvvO+dIDfVeP2L+WoyMs="
+                              else if system == "aarch64-linux" then "sha256-IrEGcTEeI1q0/7tLtMiiKPcW05JvaU8kNY6y5eprYg4="
+                              else if system == "x86_64-darwin" then "sha256-DDPmVkXjSLDr21LXcdvNkmGjD2v+sbUyY+REr3uylwI="
+                              else if system == "aarch64-darwin" then "sha256-dpUCCLkhoGDKkDKPZxr7WrmkifxHi4MWLpD148z2vhg="
+                              else throw "Unsupported system: ${system}";
+
+        leantarPlatform = if system == "x86_64-linux" then "x86_64-unknown-linux-musl"
+                          else if system == "aarch64-linux" then "aarch64-unknown-linux-musl"
+                          else if system == "x86_64-darwin" then "x86_64-apple-darwin"
+                          else if system == "aarch64-darwin" then "aarch64-apple-darwin"
+                          else throw "Unsupported system: ${system}";
+
+        leantarSha256 = if system == "x86_64-linux" then "sha256-LLxAyiFCJ6DlNnIcAhutcZqALdhrHy2JiVce+vv709E="
+                        else if system == "aarch64-linux" then "sha256-Jut3VDaIPj1c2tJ681ucNyEscxBjFoY+ofxfjsLMneQ="
+                        else if system == "x86_64-darwin" then "sha256-58eNYGxlMHhiuw/sWqRG1ves4TN7HkiVzEfZH3VlmWw="
+                        else if system == "aarch64-darwin" then "sha256-tbWQ0vhC4jWZPsdW09vWCKE8iP1U02p7K2WjY7LuXjU="
+                        else throw "Unsupported system: ${system}";
+
+        mathlibCacheDownloadSha256 = if system == "x86_64-linux" then "sha256-n67tKjzZm5LsDU1Dl9kaOFKrQw+8YE201F0toYu1C3s="
+                                     else if system == "aarch64-linux" then "sha256-9Yj5BAv6V5BTLd/nOWzIuqTDJPKwqR28bg7m9+46K98="
+                                     else if system == "x86_64-darwin" then "sha256-DBdUmPfheeLTVwaVUzkB541Y9CWSQN6gmxBnJ3oxL4c="
+                                     else if system == "aarch64-darwin" then "sha256-wv2NZcKiyYaW6L/o7+oHWZdYZhVYLzZjyQczoaHRJnk="
+                                     else throw "Unsupported system: ${system}";
+
+        linuxDynamicLinker = if system == "x86_64-linux" then "/lib64/ld-linux-x86-64.so.2"
+                             else if system == "aarch64-linux" then "/lib/ld-linux-aarch64.so.1"
+                             else "";
+
+        linuxFhsEnv = if pkgs.stdenv.isLinux then pkgs.buildFHSEnv {
+          name = "anneal-linux-fhs";
+          targetPkgs = pkgs: with pkgs; [
+            stdenv.cc.cc
+            zlib
+            gmp
+            libffi
+            ncurses
+            openssl
+          ];
+          runScript = "bash";
+        } else null;
+
+        runLeanCommand = command:
+          if pkgs.stdenv.isLinux
+          then "${linuxFhsEnv}/bin/anneal-linux-fhs -c ${pkgs.lib.escapeShellArg command}"
+          else command;
+
         # Prebuilt Aeneas release archive.
         fetchAeneas = { target, releaseTag, sha256 }:
           pkgs.fetchurl {
@@ -38,7 +105,8 @@
         # Fixed-output downloader used for toolchain assets.
         fetchToolchainAsset = { pname, version, sha256, buildPhase }:
           pkgs.stdenv.mkDerivation {
-            inherit pname version sha256 buildPhase;
+            pname = "${pname}-${system}";
+            inherit version sha256 buildPhase;
 
             dontUnpack = true;
 
@@ -117,18 +185,49 @@
               "curl -sSL \"$url\" | zstd -d | tar -x -C $out --strip-components=1"
             ];
           };
+
+        fetchLeantar = { version, sha256 }:
+          let
+            archive = pkgs.fetchurl {
+              name = "leantar-${version}-${leantarPlatform}.tar.gz";
+              url = "https://github.com/digama0/leangz/releases/download/v${version}/leantar-v${version}-${leantarPlatform}.tar.gz";
+              inherit sha256;
+            };
+          in
+          pkgs.stdenv.mkDerivation {
+            pname = "leantar-${system}";
+            inherit version;
+
+            src = archive;
+            dontPatchShebangs = true;
+            dontPatchELF = true;
+            dontStrip = true;
+
+            nativeBuildInputs = with pkgs; [
+              gnutar
+              gzip
+            ];
+
+            unpackPhase = ''
+              runHook preUnpack
+              tar -xzf "$src" --strip-components=1
+              runHook postUnpack
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out/bin"
+              cp leantar "$out/bin/leantar"
+              chmod +x "$out/bin/leantar"
+              runHook postInstall
+            '';
+          };
       in
       {
-        # FIXME: The output set is evaluated for every flake-utils default
-        # system, but the omnibus archive is currently only real for x86_64
-        # Linux. True multi-platform archives need per-system Aeneas release
-        # assets and hashes, per-system Lean/Rust archive hashes, and
-        # platform-specific binary cleanup instead of unconditional Linux ELF
-        # interpreter patching.
-        packages.aeneas-download-linux-x86_64 = fetchAeneas {
-          target = "linux-x86_64";
+        packages.aeneas-download = fetchAeneas {
+          target = aeneasTarget;
           releaseTag = "nightly-2026.06.03";
-          sha256 = "00fb8ef427d4d06dcabd90f5196266e07731adf2a7466964ce6f4f6d1e8cbc11";
+          sha256 = aeneasSha256;
         };
 
         # Extracts the toolchain metadata implied by the Aeneas archive.
@@ -136,12 +235,11 @@
           pname = "aeneas-unpacked";
           version = "1.0.0";
 
-          src = self.packages.${system}.aeneas-download-linux-x86_64;
+          src = self.packages.${system}.aeneas-download;
 
           nativeBuildInputs = with pkgs; [
             gnutar
             gzip
-            binutils  # Provides `strings` utility
           ];
 
           dontUnpack = true;
@@ -152,10 +250,11 @@
             "chmod -R +w $out"
             "LEAN_RAW=\$(cat $out/backends/lean/lean-toolchain)"
             "LEAN_VERSION=\$(echo \"\$LEAN_RAW\" | sed -E 's|leanprover/lean4:v?||' | tr -d '\\n')"
-            # Charon embeds the rustc commit date; nightly is the following day.
-            # FIXME: prefer an upstream pin file if Aeneas publishes one.
-            "COMMIT_DATE=\$(strings $out/charon | grep -o \"rustc version .* ([0-9a-f]\\{9\\} [0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\})\" | head -n 1 | grep -o \"[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\" | tr -d '\\n')"
-            "RUST_DATE=\$(date -d \"\$COMMIT_DATE + 1 day\" +%Y-%m-%d)"
+            "if [ -z \"\$LEAN_VERSION\" ] || [ \"\$LEAN_VERSION\" = \"\$LEAN_RAW\" ]; then"
+            "  echo \"ERROR: could not parse Lean toolchain from Aeneas archive: \$LEAN_RAW\" >&2"
+            "  exit 1"
+            "fi"
+            "RUST_DATE=${rustDate}"
             "RUST_VERSION=\"nightly-\$RUST_DATE\""
             "cat <<EOF > $out/metadata.json"
             "{"
@@ -172,7 +271,7 @@
           pname = "aeneas-metadata-files";
           version = "1.0.0";
 
-          src = self.packages.${system}.aeneas-download-linux-x86_64;
+          src = self.packages.${system}.aeneas-download;
 
           nativeBuildInputs = with pkgs; [
             gnutar
@@ -192,7 +291,7 @@
 
         # Fetches Mathlib's precompiled Lake cache in a fixed-output derivation.
         packages.mathlib-cache-download = pkgs.stdenv.mkDerivation {
-          pname = "mathlib-cache-download";
+          pname = "mathlib-cache-download-${system}";
           version = "0.1.0";
 
           dontUnpack = true;
@@ -204,14 +303,13 @@
 
           outputHashMode = "recursive";
           outputHashAlgo = "sha256";
-          outputHash = "sha256-tj5BeYGWSmXvYdzChrqaG9aN7so/+jAM5qWPI8tcN6U=";
+          outputHash = mathlibCacheDownloadSha256;
 
           leanToolchainRaw = self.packages.${system}.lean-toolchain;
           metadataFiles = self.packages.${system}.aeneas-metadata-files;
 
           nativeBuildInputs = with pkgs; [
             git
-            steam-run
             gnutar
             zstd
             curl
@@ -229,7 +327,10 @@
             "cd project"
             "export PATH=\"$leanToolchainRaw/bin:${pkgs.git}/bin:${pkgs.curl}/bin:\$PATH\""
             "export LEAN_SYSROOT=\"$leanToolchainRaw\""
-            "steam-run $leanToolchainRaw/bin/lake exe cache get"
+            # `get-` downloads the linked .ltar files without also decompressing
+            # them. That keeps this fixed-output derivation focused on network
+            # materialization; the ordinary derivation below does decompression.
+            (runLeanCommand "$leanToolchainRaw/bin/lake exe cache get-")
           ];
 
           installPhase = builtins.concatStringsSep "\n" [
@@ -256,7 +357,7 @@
           src = pkgs.runCommand "empty-src" {} "mkdir $out";
 
           mathlibCache = self.packages.${system}.mathlib-cache-download;
-          leanToolchain = self.packages.${system}.lean-toolchain;
+          leantar = self.packages.${system}.leantar;
 
           nativeBuildInputs = with pkgs; [
             gnutar
@@ -267,12 +368,12 @@
             "mkdir -p $out/packages"
             "cp -r $mathlibCache/packages/* $out/packages/"
             "chmod -R +w $out/packages"
-            "LEANTAR_BIN=\$(find $mathlibCache/cache/mathlib -name \"leantar-*\" -type f -executable | head -n 1)"
-            "if [ -z \"\$LEANTAR_BIN\" ] && [ -x \"$leanToolchain/bin/leantar\" ]; then"
-            "  LEANTAR_BIN=\"$leanToolchain/bin/leantar\""
-            "fi"
-            "if [ -z \"\$LEANTAR_BIN\" ]; then"
-            "  echo \"ERROR: leantar utility binary not found in mathlib cache or Lean toolchain!\""
+            # Lean v4.30.0-rc2's linux_aarch64 archive accidentally bundles an
+            # x86_64 `leantar`, so do not rely on the Lean toolchain copy here.
+            # Fetch the matching native `leantar` release directly instead.
+            "LEANTAR_BIN=\"$leantar/bin/leantar\""
+            "if [ ! -x \"\$LEANTAR_BIN\" ]; then"
+            "  echo \"ERROR: leantar utility binary not found at \$LEANTAR_BIN!\""
             "  exit 1"
             "fi"
             "echo \"Using leantar binary at: \$LEANTAR_BIN\""
@@ -297,7 +398,6 @@
 
           nativeBuildInputs = with pkgs; [
             python3
-            steam-run
             gnutar
             zstd
           ];
@@ -316,70 +416,35 @@
             "cd aeneas/backends/lean"
             "cp -r $mathlibCache/packages/* ../../packages/"
             "chmod -R +w ../../packages"
-            # Seed the project-wide build cache from unpacked Mathlib archives.
-            "mkdir -p .lake"
-            "cp -r $mathlibCache/.lake/build .lake/"
-            "chmod -R +w .lake"
-            # Copy global prebuilts into each path dependency for offline replay.
-            ''
-              python3 << 'EOF'
-              import os
-              import shutil
-              import re
-
-              def discover_library_name(pkg_dir, dir_name):
-                  toml_path = os.path.join(pkg_dir, "lakefile.toml")
-                  if os.path.exists(toml_path):
-                      with open(toml_path, "r") as f:
-                          content = f.read()
-                      match = re.search(r"\[{1,2}lean_lib\]{1,2}(?:\s*\n|[^\[\]])*?name\s*=\s*\"([^\"]+)\"", content)
-                      if match:
-                          return match.group(1)
-                      match = re.search(r"^\s*name\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
-                      if match:
-                          return match.group(1).capitalize()
-
-                  lean_path = os.path.join(pkg_dir, "lakefile.lean")
-                  if os.path.exists(lean_path):
-                      with open(lean_path, "r") as f:
-                          content = f.read()
-                      match = re.search(r"lean_lib\s+(?:«([^»]+)»|\"([^\"]+)\"|([a-zA-Z0-9._-]+))", content)
-                      if match:
-                          return match.group(1) or match.group(2) or match.group(3)
-                      match = re.search(r"package\s+(?:«([^»]+)»|\"([^\"]+)\"|([a-zA-Z0-9._-]+))", content)
-                      if match:
-                          val = match.group(1) or match.group(2) or match.group(3)
-                          return val.capitalize()
-
-                  return dir_name.capitalize()
-
-              global_cache = os.path.join(os.getcwd(), ".lake", "build")
-              packages_dir = os.path.abspath("../../packages")
-
-              if os.path.exists(packages_dir):
-                  for dir_name in os.listdir(packages_dir):
-                      pkg_dir = os.path.join(packages_dir, dir_name)
-                      if not os.path.isdir(pkg_dir): continue
-                      pkg_name = discover_library_name(pkg_dir, dir_name)
-                      dest_lib_dir = os.path.join(pkg_dir, ".lake", "build", "lib", "lean")
-                      os.makedirs(dest_lib_dir, exist_ok=True)
-                      src_lib_dir = os.path.join(global_cache, "lib", "lean", pkg_name)
-                      if os.path.exists(src_lib_dir):
-                          shutil.copytree(src_lib_dir, os.path.join(dest_lib_dir, pkg_name), dirs_exist_ok=True)
-                      src_root_lib_dir = os.path.join(global_cache, "lib", "lean")
-                      if os.path.exists(src_root_lib_dir):
-                          for f in os.listdir(src_root_lib_dir):
-                              if f.startswith(pkg_name + "."):
-                                  shutil.copy2(os.path.join(src_root_lib_dir, f), dest_lib_dir)
-                      dest_ir_dir = os.path.join(pkg_dir, ".lake", "build", "ir")
-                      src_ir_dir = os.path.join(global_cache, "ir", pkg_name)
-                      if os.path.exists(src_ir_dir):
-                          os.makedirs(dest_ir_dir, exist_ok=True)
-                          shutil.copytree(src_ir_dir, os.path.join(dest_ir_dir, pkg_name), dirs_exist_ok=True)
-              EOF
-            ''
+            # In the final archive, every Lake dependency is vendored as a path
+            # package. Seed those path packages with the build products that
+            # `lake exe cache get-` originally unpacked into Lake's ordinary
+            # project cache layout so the offline build does not need to rebuild
+            # Mathlib or its dependencies from source.
+            "mkdir -p ../../packages/mathlib/.lake"
+            "cp -r $mathlibCache/.lake/build ../../packages/mathlib/.lake/"
+            "if [ -d $mathlibCache/.lake/packages ]; then"
+            "  for cached_pkg in $mathlibCache/.lake/packages/*; do"
+            "    pkg_name=\$(basename \"\$cached_pkg\")"
+            "    if [ -d \"\$cached_pkg/.lake\" ] && [ -d \"../../packages/\$pkg_name\" ]; then"
+            "      mkdir -p \"../../packages/\$pkg_name/.lake\""
+            "      cp -r \"\$cached_pkg/.lake/.\" \"../../packages/\$pkg_name/.lake/\""
+            "    fi"
+            "  done"
+            "  chmod -R +w ../../packages"
+            "fi"
             "python3 ${./rewrite-lake-vendor.py} --root . --packages-dir ../../packages"
-            "steam-run lake build"
+            # Rewriting Git dependencies to final vendored path dependencies
+            # changes Lake's dependency hashes even though the source content and
+            # cached artifacts came from the same upstream revision. Run the
+            # archive verification build in Lake's old mtime mode and make the
+            # rewritten source/config inputs older than the already-unpacked
+            # cache artifacts so Lake accepts the cache instead of deleting it
+            # and trying to rebuild Mathlib from source in the Nix sandbox.
+            "find . ../../packages -type f \\( -name \"*.lean\" -o -name \"lakefile.lean\" -o -name \"lakefile.toml\" -o -name \"lake-manifest.json\" -o -name \"lean-toolchain\" \\) -exec touch -h -d \"1970-01-01 00:00:00\" {} +"
+            "test -f ../../packages/batteries/.lake/build/lib/lean/Batteries/Data/Array/Merge.olean"
+            (runLeanCommand "lake --old build")
+            "test -f ../../packages/batteries/.lake/build/lib/lean/Batteries/Data/Array/Merge.olean"
             "python3 ${./rewrite-lake-vendor.py} --root . --packages-dir ../../packages --rewrite-traces --trace-prefix \"$leanToolchain=lean\""
             "TRACE_ABS_RE='(^|[\"[:space:]=:])/(nix/store|build|private/tmp/nix-build|ANNEAL_PLACEHOLDER_ROOT)'"
             "if find . ../../packages -type f -name \"*.trace\" -exec grep -EIl \"\$TRACE_ABS_RE\" {} + | tee /tmp/non-relocatable-traces | grep -q .; then"
@@ -390,23 +455,89 @@
             # Prune unused Lean modules and bulky upstream metadata.
             ''
               python3 << 'EOF'
+              import json
               import os
+              import re
               import shutil
 
-              def prune_package(pkg_dir):
+              import_re = re.compile(
+                  r"^(?:public\s+)?(?:protected\s+)?(?:private\s+)?(?:meta\s+)?import\s+(.+)$"
+              )
+              mathlib_trace_re = re.compile(r"((?:Mathlib)(?:\.[A-Za-z0-9_']+)*)")
+
+              def module_name_from_lean_path(pkg_dir, path):
+                  rel = os.path.relpath(path, pkg_dir)
+                  if rel == "lakefile.lean" or not rel.endswith(".lean"):
+                      return None
+                  return os.path.splitext(rel)[0].replace(os.sep, ".")
+
+              def imported_mathlib_modules(path):
+                  imports = set()
+                  with open(path, encoding="utf-8") as f:
+                      for line in f:
+                          match = import_re.match(line.strip())
+                          if match is None:
+                              continue
+                          imports.update(
+                              module
+                              for module in match.group(1).split()
+                              if module.startswith("Mathlib")
+                          )
+                  return imports
+
+              def imported_mathlib_modules_from_trace(path):
+                  try:
+                      with open(path, encoding="utf-8") as f:
+                          content = json.load(f)
+                  except (OSError, json.JSONDecodeError):
+                      return set()
+                  return set(mathlib_trace_re.findall(json.dumps(content)))
+
+              def collect_mathlib_closure(project_root, packages_root):
+                  mathlib_dir = os.path.join(packages_root, "mathlib")
+                  if not os.path.isdir(mathlib_dir):
+                      return None
+
+                  mathlib_imports = {}
+                  seeds = set()
+                  for scan_root in [project_root, packages_root]:
+                      for root, dirs, files in os.walk(scan_root):
+                          if ".git" in dirs:
+                              dirs.remove(".git")
+                          is_mathlib = root == mathlib_dir or root.startswith(mathlib_dir + os.sep)
+                          for file in files:
+                              path = os.path.join(root, file)
+                              if file.endswith(".lean"):
+                                  if is_mathlib:
+                                      module_name = module_name_from_lean_path(mathlib_dir, path)
+                                      if module_name is not None:
+                                          mathlib_imports[module_name] = imported_mathlib_modules(path)
+                                  else:
+                                      seeds.update(imported_mathlib_modules(path))
+                              elif file.endswith(".trace") and not is_mathlib:
+                                  seeds.update(imported_mathlib_modules_from_trace(path))
+
+                  closure = set()
+                  stack = list(seeds)
+                  while stack:
+                      module_name = stack.pop()
+                      if module_name in closure:
+                          continue
+                      closure.add(module_name)
+                      stack.extend(mathlib_imports.get(module_name, ()) - closure)
+
+                  print(
+                      "Mathlib reachability pruning will keep "
+                      f"{len(closure)} modules seeded from {len(seeds)} direct imports."
+                  )
+                  return closure
+
+              def prune_package(pkg_dir, mathlib_closure):
                   print(f"Pruning package at: {pkg_dir}")
                   traces_dir = os.path.join(pkg_dir, ".lake", "build", "lib", "lean")
                   if not os.path.exists(traces_dir):
                       print(f"No build traces found for {pkg_dir}, skipping pruning.")
                       return
-                  used_modules = set()
-                  for root, dirs, files in os.walk(traces_dir):
-                      for file in files:
-                          if file.endswith(".trace"):
-                              abs_trace = os.path.join(root, file)
-                              rel_trace = os.path.relpath(abs_trace, traces_dir)
-                              mod_path = os.path.splitext(rel_trace)[0]
-                              used_modules.add(mod_path)
                   all_lean_files = []
                   for root, dirs, files in os.walk(pkg_dir):
                       if ".lake" in os.path.split(root)[1] or ".git" in os.path.split(root)[1]:
@@ -417,8 +548,14 @@
                               rel_lean = os.path.relpath(abs_lean, pkg_dir)
                               all_lean_files.append(rel_lean)
                   print(f"  - Found {len(all_lean_files)} total .lean files.")
-                  if os.path.basename(pkg_dir) != "mathlib":
-                      used_modules.update(os.path.splitext(rel)[0] for rel in all_lean_files)
+                  if os.path.basename(pkg_dir) == "mathlib":
+                      if mathlib_closure is None:
+                          print("  - No Mathlib reachability closure found; keeping all modules.")
+                          used_modules = set(os.path.splitext(rel)[0] for rel in all_lean_files)
+                      else:
+                          used_modules = set(module.replace(".", os.sep) for module in mathlib_closure)
+                  else:
+                      used_modules = set(os.path.splitext(rel)[0] for rel in all_lean_files)
                       print("  - Keeping all Lean modules for non-Mathlib package.")
                   print(f"  - Keeping {len(used_modules)} modules.")
                   unused_count = 0
@@ -456,11 +593,12 @@
                       if not os.listdir(root): os.rmdir(root)
 
               packages_root = os.path.abspath("../../packages")
+              mathlib_closure = collect_mathlib_closure(os.path.abspath("."), packages_root)
               if os.path.exists(packages_root):
                   for name in os.listdir(packages_root):
                       pkg_dir = os.path.join(packages_root, name)
                       if os.path.isdir(pkg_dir):
-                          prune_package(pkg_dir)
+                          prune_package(pkg_dir, mathlib_closure)
 
               root_mathlib_build = os.path.join(os.getcwd(), ".lake", "build", "lib", "lean", "Mathlib")
               if os.path.exists(root_mathlib_build):
@@ -490,16 +628,17 @@
           src = pkgs.runCommand "empty-src" {} "mkdir $out";
 
           nativeBuildInputs = with pkgs; [
+            gnutar
+          ] ++ pkgs.lib.optionals stdenv.isLinux [
             patchelf
             file
-            gnutar
           ];
 
           aeneasBuild = self.packages.${system}.aeneas-compiled;
           rustToolchain = self.packages.${system}.rust-toolchain;
           leanToolchain = self.packages.${system}.lean-toolchain;
 
-          buildPhase = builtins.concatStringsSep "\n" [
+          buildPhase = builtins.concatStringsSep "\n" ([
             "mkdir -p $TMPDIR/dist_staging"
             "chmod -R +w $TMPDIR/dist_staging/"
             "mkdir -p $TMPDIR/dist_staging/lean"
@@ -511,18 +650,20 @@
             "mkdir -p $TMPDIR/dist_staging/aeneas"
             "cp -r $aeneasBuild/* $TMPDIR/dist_staging/aeneas/"
             "chmod -R +w $TMPDIR/dist_staging/aeneas"
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
             # Remove Nix dynamic-linker and RPATH references from ELF binaries.
             "echo \"Cleaning up Nix store references...\""
             "find $TMPDIR/dist_staging -type f -executable | while read -r file; do"
             "  if file \"\$file\" | grep -q \"ELF 64-bit\"; then"
             "    echo \"Patching and stripping \$file...\""
             "    if patchelf --print-interpreter \"\$file\" >/dev/null 2>&1; then"
-            "      patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 \"\$file\" || true"
+            "      patchelf --set-interpreter ${linuxDynamicLinker} \"\$file\" || true"
             "    fi"
             "    patchelf --set-rpath \"\" \"\$file\" || true"
             "    strip \"\$file\" || true"
             "  fi"
             "done"
+          ] ++ [
             "TRACE_ABS_RE='(^|[\"[:space:]=:])/(nix/store|build|private/tmp/nix-build|ANNEAL_PLACEHOLDER_ROOT)'"
             "if find $TMPDIR/dist_staging -type f -name \"*.trace\" -exec grep -EIl \"\$TRACE_ABS_RE\" {} + | tee /tmp/non-relocatable-staged-traces | grep -q .; then"
             "  echo \"ERROR: non-relocatable paths remain in staged Lake trace files\" >&2"
@@ -532,7 +673,7 @@
             "chmod -R a-w $TMPDIR/dist_staging"
             "cd $TMPDIR/dist_staging"
             "tar -cf $out *"
-          ];
+          ]);
         };
 
         # Final compressed toolchain archive. This is the local-development
@@ -566,13 +707,18 @@
         });
 
         packages.rust-toolchain = fetchRustToolchain {
-          rustDate = "2026-05-31";
-          sha256 = "sha256-tdLBvDewiNTUKOdMJ1pkU7mPrUY0xTFOZWdG9dDNiAk=";
+          inherit rustDate;
+          sha256 = rustToolchainSha256;
         };
 
         packages.lean-toolchain = fetchLeanToolchain {
-          leanVersion = "v4.30.0-rc2";
-          sha256 = "sha256-o47cQjSLK5YL8YZ2raaj+mGAvvO+dIDfVeP2L+WoyMs=";
+          inherit leanVersion;
+          sha256 = leanToolchainSha256;
+        };
+
+        packages.leantar = fetchLeantar {
+          version = "0.1.16";
+          sha256 = leantarSha256;
         };
 
         # Verifies that Aeneas metadata can drive toolchain derivations.
