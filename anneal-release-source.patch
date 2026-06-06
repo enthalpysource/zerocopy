@@ -1,0 +1,39 @@
+diff --git a/anneal/Cargo.lock b/anneal/Cargo.lock
+index bde098220..27d0e3874 100644
+--- a/anneal/Cargo.lock
++++ b/anneal/Cargo.lock
+@@ -207,7 +207,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "cargo-anneal"
+-version = "0.1.0-alpha.23"
++version = "0.1.0-alpha.10001"
+ dependencies = [
+  "anyhow",
+  "assert_cmd",
+diff --git a/anneal/Cargo.toml b/anneal/Cargo.toml
+index 2e0d0d370..e4cd15388 100644
+--- a/anneal/Cargo.toml
++++ b/anneal/Cargo.toml
+@@ -4,7 +4,7 @@ members = [".", "tools/doc_gen"]
+ [package]
+ name = "cargo-anneal"
+ edition = "2024"
+-version = "0.1.0-alpha.23"
++version = "0.1.0-alpha.10001"
+ description = "Formally verify that your safety comments are correct."
+ categories = [
+   "development-tools::cargo-plugins",
+diff --git a/anneal/README.md b/anneal/README.md
+index bd55113b0..61723c862 100644
+--- a/anneal/README.md
++++ b/anneal/README.md
+@@ -184,7 +184,7 @@ impl std::ops::Div<PositiveUsize> for usize {
+ Install Anneal and its required toolchains (Charon and Aeneas):
+ 
+ ```bash
+-cargo install cargo-anneal@0.1.0-alpha.23
++cargo install cargo-anneal@0.1.0-alpha.10001
+ cargo anneal setup
+ ```
+ 

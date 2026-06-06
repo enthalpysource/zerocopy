@@ -4,7 +4,7 @@ members = [".", "tools/doc_gen"]
 [package]
 name = "cargo-anneal"
 edition = "2024"
-version = "0.1.0-alpha.23"
+version = "0.1.0-alpha.10001"
 description = "Formally verify that your safety comments are correct."
 categories = [
   "development-tools::cargo-plugins",
@@ -25,20 +25,20 @@ exclude = [".*", "testdata"]
 # this crate; `cargo anneal setup` uses this metadata by default when callers
 # do not provide a local archive.
 [package.metadata.exocrate.linux.x86_64]
-sha256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-url = "https://example.com/linux-x86_64.tar.zst"
+sha256 = "b1f6848106b40cc07fad3eeaa6f7c9fbdfb0c985cbcba57e090185d3661c0827"
+url = "https://github.com/enthalpysource/zerocopy/releases/download/anneal-toolchains-v0.1.0-alpha.10001-27074078807-b7a16397a393/anneal-toolchain-linux-x86_64.tar.zst"
 
 [package.metadata.exocrate.macos.x86_64]
-sha256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-url = "https://example.com/macos-x86_64.tar.zst"
+sha256 = "f608b07ff39ce5996e9ee283f780d980bdf5ace5e224483585b440ea587a1909"
+url = "https://github.com/enthalpysource/zerocopy/releases/download/anneal-toolchains-v0.1.0-alpha.10001-27074078807-b7a16397a393/anneal-toolchain-macos-x86_64.tar.zst"
 
 [package.metadata.exocrate.linux.aarch64]
-sha256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-url = "https://example.com/linux-aarch64.tar.zst"
+sha256 = "f778d217dd23b0f3d8ccf6c32808706192d997931456728b59baa2d80257096e"
+url = "https://github.com/enthalpysource/zerocopy/releases/download/anneal-toolchains-v0.1.0-alpha.10001-27074078807-b7a16397a393/anneal-toolchain-linux-aarch64.tar.zst"
 
 [package.metadata.exocrate.macos.aarch64]
-sha256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-url = "https://example.com/macos-aarch64.tar.zst"
+sha256 = "0a76578b8dfd1ed40d2bb5094a354aa6884bc5c29aab39b8e152a2fa1cb56c60"
+url = "https://github.com/enthalpysource/zerocopy/releases/download/anneal-toolchains-v0.1.0-alpha.10001-27074078807-b7a16397a393/anneal-toolchain-macos-aarch64.tar.zst"
 
 [dependencies]
 anyhow = "1.0.102"

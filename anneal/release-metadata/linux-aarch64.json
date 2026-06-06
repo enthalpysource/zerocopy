@@ -1,0 +1,8 @@
+{
+  "arch": "aarch64",
+  "filename": "anneal-toolchain-linux-aarch64.tar.zst",
+  "os": "linux",
+  "sha256": "f778d217dd23b0f3d8ccf6c32808706192d997931456728b59baa2d80257096e",
+  "target": "linux-aarch64",
+  "url": "https://github.com/enthalpysource/zerocopy/releases/download/anneal-toolchains-v0.1.0-alpha.10001-27074078807-b7a16397a393/anneal-toolchain-linux-aarch64.tar.zst"
+}

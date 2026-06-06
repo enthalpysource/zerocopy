@@ -1,0 +1,8 @@
+{
+  "arch": "aarch64",
+  "filename": "anneal-toolchain-macos-aarch64.tar.zst",
+  "os": "macos",
+  "sha256": "0a76578b8dfd1ed40d2bb5094a354aa6884bc5c29aab39b8e152a2fa1cb56c60",
+  "target": "macos-aarch64",
+  "url": "https://github.com/enthalpysource/zerocopy/releases/download/anneal-toolchains-v0.1.0-alpha.10001-27074078807-b7a16397a393/anneal-toolchain-macos-aarch64.tar.zst"
+}
