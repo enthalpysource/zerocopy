@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780724125024,
-  "repoUrl": "https://github.com/google/zerocopy",
+  "lastUpdate": 1780761587624,
+  "repoUrl": "https://github.com/enthalpysource/zerocopy",
   "entries": {
     "Docker Image Size": [
       {
@@ -20645,6 +20645,40 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 878,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joshlf@google.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "committer": {
+            "email": "joshlf@google.com",
+            "name": "Joshua Liebow-Feeser",
+            "username": "joshlf"
+          },
+          "distinct": true,
+          "id": "2a75e9fd3f9d26dd351bbf4b6ece6af0b915ff48",
+          "message": "Add single Nix build smoke workflow\n\ngherrit-pr-id: Gbqdsdzjlxmyn5n3spxgjhmuww3ihuwaz",
+          "timestamp": "2026-06-06T14:57:02Z",
+          "tree_id": "d7c6094a93b4f2d62de3e94bbb99d1174fbd1322",
+          "url": "https://github.com/enthalpysource/zerocopy/commit/2a75e9fd3f9d26dd351bbf4b6ece6af0b915ff48"
+        },
+        "date": 1780761585892,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Test Time",
+            "value": 590,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 807,
             "unit": "seconds"
           }
         ]
