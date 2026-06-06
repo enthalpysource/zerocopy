@@ -20,12 +20,24 @@ permissions:
   contents: read
 
 jobs:
+  queue-probe:
+    name: Queue probe
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print runner
+        run: |
+          set -eux
+          uname -a
+          uname -m
+
   nix-package:
     name: ${{ matrix.system }} ${{ matrix.package }}
+    needs: queue-probe
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include:
           - system: x86_64-linux
