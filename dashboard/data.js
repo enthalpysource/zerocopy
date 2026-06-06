@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780771583389,
+  "lastUpdate": 1780773702195,
   "repoUrl": "https://github.com/enthalpysource/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -20709,6 +20709,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 772,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "enthalpysource",
+            "username": "enthalpysource"
+          },
+          "committer": {
+            "name": "enthalpysource",
+            "username": "enthalpysource"
+          },
+          "id": "786c66744aa6e0adb0da52d50c8de78a32ba0fbe",
+          "message": "Test Anneal release stack",
+          "timestamp": "2026-06-06T14:57:17Z",
+          "url": "https://github.com/enthalpysource/zerocopy/pull/1/commits/786c66744aa6e0adb0da52d50c8de78a32ba0fbe"
+        },
+        "date": 1780773699803,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Test Time",
+            "value": 619,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 833,
             "unit": "seconds"
           }
         ]
