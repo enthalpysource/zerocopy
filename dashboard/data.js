@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780715906647,
+  "lastUpdate": 1780715922673,
   "repoUrl": "https://github.com/google/zerocopy",
   "entries": {
     "Docker Image Size": [
@@ -19955,6 +19955,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "Total CI Duration (All Steps)",
             "value": 813,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "google",
+            "username": "google"
+          },
+          "committer": {
+            "name": "google",
+            "username": "google"
+          },
+          "id": "f0ac12e96d19609ccd7a396bf61034b928aa82e7",
+          "message": "[anneal][v2] Add scanner module to map workspace packages to AnnealArtifacts",
+          "timestamp": "2026-06-05T22:00:32Z",
+          "url": "https://github.com/google/zerocopy/pull/3402/commits/f0ac12e96d19609ccd7a396bf61034b928aa82e7"
+        },
+        "date": 1780715920865,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Test Time",
+            "value": 575,
+            "unit": "seconds"
+          },
+          {
+            "name": "Total CI Duration (All Steps)",
+            "value": 807,
             "unit": "seconds"
           }
         ]
