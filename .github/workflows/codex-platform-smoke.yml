@@ -48,6 +48,9 @@ jobs:
             package: mathlib-cache-download
           - system: x86_64-darwin
             runner: macos-15-intel
+            package: mathlib-cache-download
+          - system: x86_64-darwin
+            runner: macos-15-intel
             package: aeneas-unpacked
           - system: x86_64-darwin
             runner: macos-15-intel
@@ -55,6 +58,9 @@ jobs:
           - system: x86_64-darwin
             runner: macos-15-intel
             package: lean-toolchain
+          - system: aarch64-darwin
+            runner: macos-latest
+            package: mathlib-cache-download
           - system: aarch64-darwin
             runner: macos-latest
             package: aeneas-unpacked
