@@ -10,26 +10,48 @@ name: Codex Platform Smoke
 
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Fork ref to test'
+        required: true
+        default: 'codex/anneal-release-autonomous'
 
 permissions:
   contents: read
 
 jobs:
-  smoke:
-    name: ${{ matrix.target }}
+  nix-package:
+    name: ${{ matrix.system }} ${{ matrix.package }}
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: linux-x86_64
+          - system: x86_64-linux
             runner: ubuntu-latest
-          - target: linux-aarch64
+            package: mathlib-cache-download
+          - system: aarch64-linux
             runner: ubuntu-24.04-arm
-          - target: macos-x86_64
+            package: mathlib-cache-download
+          - system: x86_64-darwin
             runner: macos-15-intel
-          - target: macos-aarch64
+            package: aeneas-unpacked
+          - system: x86_64-darwin
+            runner: macos-15-intel
+            package: rust-toolchain
+          - system: x86_64-darwin
+            runner: macos-15-intel
+            package: lean-toolchain
+          - system: aarch64-darwin
             runner: macos-latest
+            package: aeneas-unpacked
+          - system: aarch64-darwin
+            runner: macos-latest
+            package: rust-toolchain
+          - system: aarch64-darwin
+            runner: macos-latest
+            package: lean-toolchain
 
     steps:
       - name: Print platform
@@ -46,3 +68,34 @@ jobs:
           set -eux
           sw_vers
           sysctl -n machdep.cpu.brand_string || true
+
+      - name: Checkout test ref
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@441b9e401ac050c38a07d8313748c5c2d17e8aff # v3.6.1
+
+      - name: Enable unprivileged user namespaces (Ubuntu 24.04)
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Build package
+        env:
+          SYSTEM: ${{ matrix.system }}
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          set -eux
+          nix --version
+          nix build \
+            --extra-experimental-features 'nix-command flakes' \
+            --print-build-logs \
+            --show-trace \
+            --no-link \
+            "./anneal/v2#packages.${SYSTEM}.${PACKAGE}"
+
+      - name: Restore AppArmor restriction
+        if: always() && runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
