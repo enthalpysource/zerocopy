@@ -54,6 +54,12 @@ jobs:
             anneal/tools/test_exocrate_metadata_helpers.py \
             anneal/tools/test_release_pr_files.py \
             anneal/tools/collect-release-archive-metadata.py \
+            anneal/tools/ci_metrics/collect.py \
+            anneal/tools/ci_metrics/generate_dashboard.py \
+            anneal/tools/ci_metrics/test_collect.py \
+            anneal/tools/ci_metrics/test_generate_dashboard.py \
+            anneal/tools/ci_metrics/test_write_semantic_metrics.py \
+            anneal/tools/ci_metrics/write_semantic_metrics.py \
             anneal/tools/update-exocrate-metadata.py \
             anneal/v2/tests/test_prune_lake_cache.py \
             anneal/v2/prune-lake-cache.py \
@@ -74,7 +80,7 @@ jobs:
     needs: v2_nix_cache
     permissions:
       actions: read # Required to download the toolchain artifact.
-      contents: write # Required to push benchmark data to the storage branch
+      contents: read
     env:
       ANNEAL_TOOLCHAIN_DIR: ${{ github.workspace }}/anneal/target/anneal-toolchain
       __ZEROCOPY_LOCAL_DEV: 1
@@ -82,10 +88,6 @@ jobs:
       RUSTDOCFLAGS: ""
       RUST_TEST_THREADS: "1"
     steps:
-      - name: Record job start time
-        id: job_start_time
-        run: echo "unix=$(date +%s)" >> "$GITHUB_OUTPUT"
-
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
@@ -123,48 +125,8 @@ jobs:
       # tests instead of specifically trying to carve out unit tests and risk
       # missing test categories.
       - name: Run all tests
-        run: |
-          start=$(date +%s)
-          cargo test --verbose
-          end=$(date +%s)
-          duration=$((end - start))
-          echo "Test Time: $duration seconds"
-          echo "[{\"name\": \"Test Time\", \"unit\": \"seconds\", \"value\": $duration}]" > test_time.json
+        run: cargo test --verbose
         working-directory: anneal
-
-      - name: Combine benchmarks
-        env:
-          JOB_START_TIME_UNIX: ${{ steps.job_start_time.outputs.unix }}
-        run: |
-          total_duration=$(( $(date +%s) - JOB_START_TIME_UNIX ))
-          echo "Total CI Duration (All Steps): $total_duration seconds"
-          echo "[{\"name\": \"Total CI Duration (All Steps)\", \"unit\": \"seconds\", \"value\": $total_duration}]" > total_time.json
-
-          jq -n \
-            --slurpfile test anneal/test_time.json \
-            --slurpfile total total_time.json \
-            '[
-              $test[0][0],
-              $total[0][0]
-            ]' > output.json
-
-      - name: Store CI duration benchmarks
-        # Only trusted main-branch pushes to the canonical repository can
-        # update the benchmark-data branch. Pull requests from forks receive a
-        # read-only GITHUB_TOKEN, and forks running this workflow should not try
-        # to publish benchmark history for google/zerocopy.
-        if: github.event_name == 'push' && github.repository == 'google/zerocopy' && github.ref == 'refs/heads/main'
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
-        with:
-          name: CI Durations
-          tool: 'customSmallerIsBetter'
-          output-file-path: output.json
-          gh-pages-branch: benchmark-data
-          auto-push: true
-          save-data-file: true
-          benchmark-data-dir-path: dashboard
-          fail-on-alert: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   verify_examples:
     name: Verify example (${{ matrix.example }})
@@ -314,6 +276,7 @@ jobs:
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Build Anneal toolchain archive
+        id: build_archive
         run: |
           set -euo pipefail
           mkdir -p target
@@ -331,6 +294,7 @@ jobs:
           archive_size="$(python3 -c 'import os, sys; print(os.path.getsize(sys.argv[1]))' target/anneal-exocrate.tar.zst)"
           max_github_release_asset_size=2147483647
           printf 'Built anneal-exocrate.tar.zst (%s bytes)\n' "$archive_size"
+          printf 'archive_size=%s\n' "$archive_size" >> "$GITHUB_OUTPUT"
           if [ "$archive_size" -gt "$max_github_release_asset_size" ]; then
             echo "::error::anneal-exocrate.tar.zst is ${archive_size} bytes, which exceeds GitHub's ${max_github_release_asset_size}-byte release asset limit."
             exit 1
@@ -343,6 +307,25 @@ jobs:
       - name: Restore AppArmor restriction
         if: always()
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
+
+      - name: Write Anneal CI semantic metrics
+        if: always()
+        run: |
+          python3 anneal/tools/ci_metrics/write_semantic_metrics.py \
+            --out anneal/v2/target/anneal-ci-metrics/archive.json \
+            --archive-size-bytes '${{ steps.build_archive.outputs.archive_size }}' \
+            --main-nix-cache-hit '${{ steps.restore_anneal_main_nix_cache.outputs.cache-hit }}' \
+            --pr-nix-cache-hit '${{ steps.restore_anneal_pr_nix_cache.outputs.cache-hit }}'
+
+      - name: Upload Anneal CI semantic metrics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: anneal-ci-metrics-archive
+          path: anneal/v2/target/anneal-ci-metrics/archive.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
       # Populate the default-branch cache only from trusted `main` pushes.
       # GitHub's dependency-cache scoping makes entries saved from `main`

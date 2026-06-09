@@ -1,0 +1,20 @@
+{
+  "conclusion": "success",
+  "created_at": "2026-06-08T00:00:00Z",
+  "display_title": "Fixture Anneal run",
+  "event": "push",
+  "head_branch": "main",
+  "head_sha": "8d7db04ed000000000000000000000000000000",
+  "html_url": "https://github.com/google/zerocopy/actions/runs/123",
+  "id": 123,
+  "name": "Anneal Tests",
+  "repository": {
+    "full_name": "google/zerocopy"
+  },
+  "run_attempt": 1,
+  "run_number": 42,
+  "run_started_at": "2026-06-08T00:01:00Z",
+  "status": "completed",
+  "updated_at": "2026-06-08T00:10:02Z",
+  "workflow_id": 259842844
+}

@@ -1,0 +1,94 @@
+# Copyright 2026 The Fuchsia Authors
+#
+# Licensed under a BSD-style license <LICENSE-BSD>, Apache License, Version 2.0
+# <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>, or the MIT
+# license <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+# This file may not be copied, modified, or distributed except according to
+# those terms.
+
+name: Anneal CI Metrics
+
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: ["Anneal Tests"]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: anneal-ci-metrics-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish Anneal CI metrics
+    runs-on: ubuntu-latest
+    if: >-
+      ${{
+        github.repository == 'google/zerocopy' &&
+        github.event.workflow_run.repository.full_name == 'google/zerocopy' &&
+        github.event.workflow_run.name == 'Anneal Tests' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.conclusion == 'success'
+      }}
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          path: source
+          persist-credentials: false
+
+      - name: Checkout benchmark data
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: benchmark-data
+          path: benchmark-data
+
+      - name: Download Anneal CI semantic metric artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.event.workflow_run.repository.full_name }}
+          run-id: ${{ github.event.workflow_run.id }}
+          pattern: anneal-ci-metrics-*
+          path: artifacts
+          merge-multiple: false
+
+      - name: Collect and generate Anneal CI metrics
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_RUN_REPOSITORY: ${{ github.event.workflow_run.repository.full_name }}
+        run: |
+          set -euo pipefail
+          python3 source/anneal/tools/ci_metrics/collect.py \
+            --repo "$WORKFLOW_RUN_REPOSITORY" \
+            --run-id "$WORKFLOW_RUN_ID" \
+            --artifacts-dir artifacts \
+            --output-dir benchmark-data/anneal-ci \
+            --legacy-data-js benchmark-data/dashboard/data.js
+          python3 source/anneal/tools/ci_metrics/generate_dashboard.py \
+            --data-dir benchmark-data/anneal-ci \
+            --out-dir benchmark-data/anneal-ci/dashboard
+
+      - name: Commit benchmark data
+        env:
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          cd benchmark-data
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add anneal-ci
+          if git diff --cached --quiet; then
+            echo "No Anneal CI metric changes to commit."
+            exit 0
+          fi
+          git commit -m "Update Anneal CI metrics for run $WORKFLOW_RUN_ID"
+          git push origin HEAD:benchmark-data

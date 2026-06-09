@@ -1,0 +1,13 @@
+{
+  "archive_size_bytes": 1000,
+  "event": "push",
+  "generated_at": "2026-06-08T00:02:00Z",
+  "kind": "anneal-ci-semantic-metrics",
+  "main_nix_cache_hit": "true",
+  "metrics": [],
+  "pr_nix_cache_hit": "",
+  "ref": "refs/heads/main",
+  "release_asset_limit_bytes": 2147483647,
+  "schema_version": 1,
+  "sha": "8d7db04ed000000000000000000000000000000"
+}

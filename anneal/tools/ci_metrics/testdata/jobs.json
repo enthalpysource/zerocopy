@@ -1,0 +1,163 @@
+{
+  "jobs": [
+    {
+      "completed_at": "2026-06-08T00:02:40Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/google/zerocopy/actions/runs/123/job/1",
+      "id": 1,
+      "labels": ["ubuntu-latest"],
+      "name": "Anneal Static Checks",
+      "runner_group_name": "GitHub Actions",
+      "runner_name": "GitHub Actions 1",
+      "started_at": "2026-06-08T00:01:00Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completed_at": "2026-06-08T00:01:10Z",
+          "conclusion": "success",
+          "name": "actions/checkout",
+          "number": 1,
+          "started_at": "2026-06-08T00:01:00Z"
+        },
+        {
+          "completed_at": "2026-06-08T00:02:30Z",
+          "conclusion": "success",
+          "name": "Test Anneal support scripts",
+          "number": 2,
+          "started_at": "2026-06-08T00:01:10Z"
+        }
+      ]
+    },
+    {
+      "completed_at": "2026-06-08T00:02:00Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/google/zerocopy/actions/runs/123/job/2",
+      "id": 2,
+      "labels": ["ubuntu-latest"],
+      "name": "Build Anneal Toolchain Archive",
+      "runner_group_name": "GitHub Actions",
+      "runner_name": "GitHub Actions 2",
+      "started_at": "2026-06-08T00:01:00Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completed_at": "2026-06-08T00:01:25Z",
+          "conclusion": "success",
+          "name": "Install Nix",
+          "number": 1,
+          "started_at": "2026-06-08T00:01:00Z"
+        },
+        {
+          "completed_at": "2026-06-08T00:01:55Z",
+          "conclusion": "success",
+          "name": "Build Anneal toolchain archive",
+          "number": 2,
+          "started_at": "2026-06-08T00:01:25Z"
+        }
+      ]
+    },
+    {
+      "completed_at": "2026-06-08T00:10:00Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/google/zerocopy/actions/runs/123/job/3",
+      "id": 3,
+      "labels": ["ubuntu-latest"],
+      "name": "Anneal Tests",
+      "runner_group_name": "GitHub Actions",
+      "runner_name": "GitHub Actions 3",
+      "started_at": "2026-06-08T00:02:05Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completed_at": "2026-06-08T00:04:00Z",
+          "conclusion": "success",
+          "name": "Download Anneal toolchain archive",
+          "number": 1,
+          "started_at": "2026-06-08T00:02:10Z"
+        },
+        {
+          "completed_at": "2026-06-08T00:05:20Z",
+          "conclusion": "success",
+          "name": "Install Anneal toolchain archive",
+          "number": 2,
+          "started_at": "2026-06-08T00:04:00Z"
+        },
+        {
+          "completed_at": "2026-06-08T00:10:00Z",
+          "conclusion": "success",
+          "name": "Run all tests",
+          "number": 3,
+          "started_at": "2026-06-08T00:05:20Z"
+        }
+      ]
+    },
+    {
+      "completed_at": "2026-06-08T00:06:10Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/google/zerocopy/actions/runs/123/job/4",
+      "id": 4,
+      "labels": ["ubuntu-latest"],
+      "name": "Verify example (abs)",
+      "runner_group_name": "GitHub Actions",
+      "runner_name": "GitHub Actions 4",
+      "started_at": "2026-06-08T00:02:10Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completed_at": "2026-06-08T00:06:10Z",
+          "conclusion": "success",
+          "name": "Verify example",
+          "number": 1,
+          "started_at": "2026-06-08T00:02:50Z"
+        }
+      ]
+    },
+    {
+      "completed_at": "2026-06-08T00:07:15Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/google/zerocopy/actions/runs/123/job/5",
+      "id": 5,
+      "labels": ["ubuntu-latest"],
+      "name": "Verify example (swap)",
+      "runner_group_name": "GitHub Actions",
+      "runner_name": "GitHub Actions 5",
+      "started_at": "2026-06-08T00:02:15Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completed_at": "2026-06-08T00:07:15Z",
+          "conclusion": "success",
+          "name": "Verify example",
+          "number": 1,
+          "started_at": "2026-06-08T00:02:55Z"
+        }
+      ]
+    },
+    {
+      "completed_at": "2026-06-08T00:05:20Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/google/zerocopy/actions/runs/123/job/6",
+      "id": 6,
+      "labels": ["ubuntu-latest"],
+      "name": "Run V2 tests",
+      "runner_group_name": "GitHub Actions",
+      "runner_name": "GitHub Actions 6",
+      "started_at": "2026-06-08T00:02:20Z",
+      "status": "completed",
+      "steps": []
+    },
+    {
+      "completed_at": "2026-06-08T00:10:02Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/google/zerocopy/actions/runs/123/job/7",
+      "id": 7,
+      "labels": ["ubuntu-latest"],
+      "name": "All checks succeeded (anneal.yml)",
+      "runner_group_name": "GitHub Actions",
+      "runner_name": "GitHub Actions 7",
+      "started_at": "2026-06-08T00:10:00Z",
+      "status": "completed",
+      "steps": []
+    }
+  ]
+}

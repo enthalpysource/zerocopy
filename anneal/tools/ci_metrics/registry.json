@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "epochs": [
+    {
+      "id": "docker-ci",
+      "name": "Docker CI",
+      "description": "Anneal CI built, pulled, and ran through Docker images.",
+      "start_commit": "c14e8ace5",
+      "end_commit": "88393fcf1"
+    },
+    {
+      "id": "free-tier-runner",
+      "name": "Free-tier GitHub-hosted runners",
+      "description": "Anneal jobs moved from larger runners to ubuntu-latest.",
+      "start_commit": "c67c8ecc9"
+    },
+    {
+      "id": "nix-archive",
+      "name": "Nix archive fan-out",
+      "description": "Anneal CI builds one Nix-produced toolchain archive and fans it out as a workflow artifact.",
+      "start_commit": "88393fcf1"
+    },
+    {
+      "id": "canonical-main-only",
+      "name": "Canonical main publishing only",
+      "description": "Benchmark history is only published from google/zerocopy main pushes.",
+      "start_commit": "88536c182"
+    }
+  ],
+  "metrics": {
+    "workflow.wall_seconds": {
+      "name": "Workflow Wall Time",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Workflow",
+      "description": "Observed elapsed time from the first job start to the last job completion."
+    },
+    "workflow.queue_seconds": {
+      "name": "Workflow Queue Time",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Workflow",
+      "description": "Elapsed time from run creation to run start."
+    },
+    "workflow.total_seconds": {
+      "name": "Workflow Total Time",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Workflow",
+      "description": "Elapsed time from run creation to workflow completion."
+    },
+    "workflow.runner_seconds": {
+      "name": "Runner Time",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Workflow",
+      "description": "Sum of all completed job durations."
+    },
+    "workflow.critical_path_seconds": {
+      "name": "Critical Path",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Workflow",
+      "description": "Longest dependency path through the Anneal workflow using observed job durations."
+    },
+    "job.static_checks.seconds": {
+      "name": "Anneal Static Checks",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Jobs"
+    },
+    "job.nix_archive.seconds": {
+      "name": "Build Anneal Toolchain Archive",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Jobs"
+    },
+    "job.anneal_tests.seconds": {
+      "name": "Anneal Tests",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Jobs"
+    },
+    "job.v2.seconds": {
+      "name": "Run V2 tests",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Jobs"
+    },
+    "job.verify_examples.max_seconds": {
+      "name": "Verify Examples Max",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Jobs"
+    },
+    "job.verify_examples.p50_seconds": {
+      "name": "Verify Examples P50",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Jobs"
+    },
+    "job.verify_examples.p90_seconds": {
+      "name": "Verify Examples P90",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Jobs"
+    },
+    "job.verify_examples.runner_seconds": {
+      "name": "Verify Examples Runner Time",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Jobs"
+    },
+    "step.anneal_tests.run_all_tests.seconds": {
+      "name": "Run All Tests",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Steps"
+    },
+    "step.anneal_tests.install_anneal_toolchain_archive.seconds": {
+      "name": "Install Anneal Toolchain Archive",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Steps"
+    },
+    "step.anneal_tests.download_anneal_toolchain_archive.seconds": {
+      "name": "Download Anneal Toolchain Archive",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Steps"
+    },
+    "step.nix_archive.build_anneal_toolchain_archive.seconds": {
+      "name": "Nix Archive Build Step",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Archive"
+    },
+    "archive.compressed_bytes": {
+      "name": "Archive Size",
+      "unit": "bytes",
+      "direction": "smaller",
+      "group": "Archive"
+    },
+    "archive.release_limit_headroom_bytes": {
+      "name": "Release Size Headroom",
+      "unit": "bytes",
+      "direction": "bigger",
+      "group": "Archive"
+    },
+    "nix.main_cache.hit": {
+      "name": "Main Nix Cache Hit",
+      "unit": "boolean",
+      "direction": "bigger",
+      "group": "Archive"
+    },
+    "nix.pr_cache.hit": {
+      "name": "PR Nix Cache Hit",
+      "unit": "boolean",
+      "direction": "bigger",
+      "group": "Archive"
+    },
+    "legacy.docker_image_size.mb": {
+      "name": "Docker Image Size",
+      "unit": "MB",
+      "direction": "smaller",
+      "group": "Retired",
+      "status": "retired",
+      "retired_reason": "Docker images were replaced by the Nix archive fan-out path in 88393fcf1."
+    },
+    "legacy.docker_build_time.seconds": {
+      "name": "Docker Build Time",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Retired",
+      "status": "retired",
+      "retired_reason": "Docker images were replaced by the Nix archive fan-out path in 88393fcf1."
+    },
+    "legacy.docker_pull_time.seconds": {
+      "name": "Docker Pull Time",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Retired",
+      "status": "retired",
+      "retired_reason": "Docker pull time was replaced by artifact download and archive setup metrics."
+    },
+    "legacy.anneal_tests_job_duration.seconds": {
+      "name": "Anneal Tests Job Duration",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Retired",
+      "status": "retired",
+      "retired_reason": "Previously named Total CI Duration (All Steps), but it measured only the Anneal Tests job."
+    },
+    "legacy.test_time.seconds": {
+      "name": "Test Time",
+      "unit": "seconds",
+      "direction": "smaller",
+      "group": "Retired",
+      "status": "retired",
+      "retired_reason": "Replaced by step.anneal_tests.run_all_tests.seconds with explicit source and epoch metadata."
+    }
+  }
+}
